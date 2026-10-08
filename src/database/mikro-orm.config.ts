@@ -1,4 +1,5 @@
 import { defineConfig } from "@mikro-orm/postgresql";
+import { Migrator } from "@mikro-orm/migrations";
 
 function requiredEnvironmentVariable(name: string): string {
   const value = process.env[name];
@@ -28,6 +29,11 @@ export function createMikroOrmConfig() {
     user: requiredEnvironmentVariable("DB_USER"),
     password: requiredEnvironmentVariable("DB_PASSWORD"),
     entities: [],
+    extensions: [Migrator],
+    migrations: {
+      path: "dist/database/migrations",
+      pathTs: "src/database/migrations",
+    },
     discovery: {
       warnWhenNoEntities: false,
     },

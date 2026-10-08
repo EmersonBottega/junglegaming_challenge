@@ -10,6 +10,18 @@ Uso de Bun 1.x, TypeScript estrito e NestJS, conforme o README do desafio. Os te
 
 Para persistência, escolhido: **MikroORM**.
 
+### Persistência financeira e concorrência
+
+O valor será guardado no banco como um número inteiro de centavos. Por exemplo, R$ 12,34 será armazenado como `1234`. A coluna PostgreSQL `BIGINT` guarda esse número inteiro sem arredondamentos, e a moeda fica em outra coluna. No restante do sistema, o valor continua sendo representado pela classe `Money`.
+
+Essa forma corresponde ao que `Money` já faz e evita cálculos com números decimais aproximados. O banco tem um limite para esse número: até `9.223.372.036.854.775.807` centavos. Um valor maior não poderá ser salvo.
+
+Cada operação que mudar o saldo será feita em uma transação do banco usando MikroORM. Isso significa que a mudança no saldo e seu lançamento no ledger serão salvos juntos: ou os dois são salvos, ou nenhum deles é.
+
+Durante a operação, o banco bloqueará a wallet afetada até terminar. Assim, se duas operações tentarem usar o saldo da mesma wallet ao mesmo tempo, uma espera a outra terminar. Wallets diferentes continuam podendo ser processadas ao mesmo tempo.
+
+O próprio banco também impedirá criar mais de uma wallet para o mesmo jogador e moeda, salvar um saldo negativo ou alterar e apagar lançamentos do ledger. Cada wallet também terá no máximo um lançamento para a mesma transação.
+
 ### Como o dinheiro é representado
 
 As entradas e saídas usam strings decimais com duas casas, por exemplo `"25.00"`. Dentro do domínio, `Money` guarda o valor como centavos em `bigint`. Assim, uma soma ou subtração não depende de ponto flutuante e não sofre erros de arredondamento.

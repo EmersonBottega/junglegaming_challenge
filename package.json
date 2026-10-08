@@ -9,10 +9,12 @@
     "start:dev": "bun --watch src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "db:check": "bun src/database/check-connection.ts"
+    "db:check": "bun src/database/check-connection.ts",
+    "db:migrate": "bun src/database/migrate.ts"
   },
   "dependencies": {
     "@mikro-orm/core": "^7.2.4",
+    "@mikro-orm/migrations": "7.2.4",
     "@mikro-orm/postgresql": "^7.2.4",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

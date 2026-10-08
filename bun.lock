@@ -6,6 +6,7 @@
       "name": "junglegaming-challenge",
       "dependencies": {
         "@mikro-orm/core": "^7.2.4",
+        "@mikro-orm/migrations": "7.2.4",
         "@mikro-orm/postgresql": "^7.2.4",
         "@nestjs/common": "^11.0.0",
         "@nestjs/core": "^11.0.0",
@@ -26,6 +27,8 @@
     "@lukeed/csprng": ["@lukeed/csprng@1.1.0", "", {}, "sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA=="],
 
     "@mikro-orm/core": ["@mikro-orm/core@7.2.4", "", { "peerDependencies": { "dataloader": "2.2.3" }, "optionalPeers": ["dataloader"] }, "sha512-19ZWACJsBxR4KZqJ7qUl3l9nQiosRxPP3LscGbK0Q1+lQAxMZPPrjfckK31z8W/f/UxQpu8Dju1EVQ15H6kt8g=="],
+
+    "@mikro-orm/migrations": ["@mikro-orm/migrations@7.2.4", "", { "dependencies": { "@mikro-orm/sql": "7.2.4" }, "peerDependencies": { "@mikro-orm/core": "7.2.4" } }, "sha512-RveAYClHvaUZUYuXhnar0dFZZ/7YLO/DDrtfZlAGIzwJ4wa7i/9vA2MS+bb8VRMMVWUrb/74PDTEKwW1X8H52g=="],
 
     "@mikro-orm/postgresql": ["@mikro-orm/postgresql@7.2.4", "", { "dependencies": { "@mikro-orm/sql": "7.2.4", "kysely": "0.29.6", "pg": "8.23.1", "pg-cursor": "2.22.1", "postgres-array": "3.0.4", "postgres-date": "2.1.0", "postgres-interval": "4.1.0" }, "peerDependencies": { "@mikro-orm/core": "7.2.4" } }, "sha512-izR87JUBcImTvSYjadGTnZYZSztvIDSbhD7NykPZkTKfaXWtMu4bBLGwCEG80yQ42UILPIRy0MYcslbWFsUm2Q=="],
 
