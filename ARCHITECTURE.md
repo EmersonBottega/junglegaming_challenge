@@ -36,4 +36,4 @@ As datas são copiadas ao entrar e sair dos objetos, para que uma alteração fe
 
 O tipo da operação determina a direção do lançamento: `BET` gera débito; `WIN`, `REFUND` e `OPENING` geram crédito; `LOSS` não movimenta o saldo nem gera lançamento. `WIN` pode referenciar uma aposta `BET` processada do mesmo provedor, jogador, wallet, rodada e moeda; o valor da aposta não precisa ser igual ao valor do prêmio. `REFUND` só aceita uma aposta `BET` processada, e `ROLLBACK` só aceita uma transação `BET`, `WIN` ou `REFUND` processada. Em `REFUND` e `ROLLBACK`, o valor deve ser igual ao da transação referenciada; `ROLLBACK` usa a direção inversa. As referências são identificadas pelo ID externo informado.
 
-A entidade valida uma reversão individual, mas ainda não impede que a mesma transação de referência seja revertida mais de uma vez.
+No processamento de `REFUND`, uma referência ausente ou ainda pendente deixa a operação em `PENDING_REFERENCE`. Uma referência incompatível ou já encerrada sem sucesso faz a operação ser rejeitada. Com uma aposta processada e compatível, a wallet recebe o crédito e o ledger registra o lançamento correspondente.
