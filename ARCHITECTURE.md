@@ -24,6 +24,16 @@ O ledger é o histórico das movimentações de uma wallet. Cada débito ou cré
 
 `WalletLedgerEntry` verifica essa conta ao ser criado e não pode ser alterado depois. A wallet atualiza o saldo somente depois que o lançamento correspondente foi criado.
 
-O README exige que um saldo inicial positivo gere uma transação interna `OPENING` e um lançamento `CREDIT` correspondente no ledger. No domínio atual, `Wallet.open` retorna a wallet e esse lançamento, a entidade da transação ainda não está implementada. Com saldo zero, não há lançamento de abertura. Quem abre a wallet fornece os IDs da transação e do lançamento.
+O README exige que um saldo inicial positivo gere uma transação interna `OPENING` e um lançamento `CREDIT` correspondente no ledger. `Wallet.open` retorna a wallet e o lançamento, usando os IDs da transação e do lançamento fornecidos por quem a chama. A entidade `WagerTransaction` já representa os tipos e estados da transação, mas a abertura da wallet ainda não cria essa entidade. Com saldo zero, não há lançamento de abertura.
 
 As datas são copiadas ao entrar e sair dos objetos, para que uma alteração feita por quem usa o objeto não modifique a data registrada.
+
+### Transações de aposta
+
+`WagerTransaction` representa as operações `BET`, `WIN`, `LOSS`, `REFUND` e `ROLLBACK`, além da operação interna `OPENING`. Uma nova transação começa em `PENDING`. `REFUND` e `ROLLBACK` precisam informar a transação externa que estão referenciando, enquanto ela não for resolvida, a transação pode ficar em `PENDING_REFERENCE`.
+
+`PROCESSED`, `REJECTED` e `FAILED` são estados finais: a entidade não permite novas transições depois de alcançá-los. `REJECTED` registra uma rejeição por regra de negócio; `FAILED` é reservado a uma falha permanente de infraestrutura.
+
+O tipo da operação determina a direção do lançamento: `BET` gera débito; `WIN`, `REFUND` e `OPENING` geram crédito; `LOSS` não movimenta o saldo nem gera lançamento. `REFUND` só aceita uma aposta `BET` processada como referência. `ROLLBACK` só aceita uma transação `BET`, `WIN` ou `REFUND` processada, e usa a direção inversa. A referência precisa corresponder ao provedor, jogador, wallet, rodada, moeda, valor e ID externo informados.
+
+A entidade valida uma reversão individual, mas ainda não impede que a mesma transação de referência seja revertida mais de uma vez.
