@@ -188,7 +188,33 @@ export class WagerTransaction {
       );
     }
 
-    if (!this.requiresReference() && referenceTransactionId !== undefined) {
+    if (
+      this.kind === WagerTransactionKind.Win &&
+      this.referenceExternalTransactionId !== undefined &&
+      !referenceTransactionId?.trim()
+    ) {
+      throw new WagerTransactionError(
+        "A resolved internal reference is required to process this WIN",
+        "REFERENCE_REQUIRED",
+      );
+    }
+
+    if (
+      this.kind === WagerTransactionKind.Win &&
+      this.referenceExternalTransactionId === undefined &&
+      referenceTransactionId !== undefined
+    ) {
+      throw new WagerTransactionError(
+        "This WIN does not declare an external reference",
+        "UNEXPECTED_REFERENCE",
+      );
+    }
+
+    if (
+      this.kind !== WagerTransactionKind.Win &&
+      !this.requiresReference() &&
+      referenceTransactionId !== undefined
+    ) {
       throw new WagerTransactionError(
         "This transaction kind cannot have an internal reference",
         "UNEXPECTED_REFERENCE",
@@ -210,7 +236,10 @@ export class WagerTransaction {
       );
     }
 
-    if (!this.requiresReference()) {
+    const canWaitForReference = this.requiresReference() ||
+      (this.kind === WagerTransactionKind.Win &&
+        this.referenceExternalTransactionId !== undefined);
+    if (!canWaitForReference) {
       throw new WagerTransactionError(
         "This transaction kind does not require a reference",
         "REFERENCE_NOT_ALLOWED",

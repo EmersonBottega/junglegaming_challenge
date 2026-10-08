@@ -30,10 +30,10 @@ As datas são copiadas ao entrar e sair dos objetos, para que uma alteração fe
 
 ### Transações de aposta
 
-`WagerTransaction` representa as operações `BET`, `WIN`, `LOSS`, `REFUND` e `ROLLBACK`, além da operação interna `OPENING`. Uma nova transação começa em `PENDING`. `REFUND` e `ROLLBACK` precisam informar a transação externa que estão referenciando, enquanto ela não for resolvida, a transação pode ficar em `PENDING_REFERENCE`.
+`WagerTransaction` representa as operações `BET`, `WIN`, `LOSS`, `REFUND` e `ROLLBACK`, além da operação interna `OPENING`. Uma nova transação começa em `PENDING`. `REFUND` e `ROLLBACK` sempre precisam informar uma referência. `WIN` pode informar uma referência opcional a uma aposta. Se uma dessas referências informadas ainda não tiver sido resolvida, a transação pode ficar em `PENDING_REFERENCE`.
 
 `PROCESSED`, `REJECTED` e `FAILED` são estados finais: a entidade não permite novas transições depois de alcançá-los. `REJECTED` registra uma rejeição por regra de negócio; `FAILED` é reservado a uma falha permanente de infraestrutura.
 
-O tipo da operação determina a direção do lançamento: `BET` gera débito; `WIN`, `REFUND` e `OPENING` geram crédito; `LOSS` não movimenta o saldo nem gera lançamento. `REFUND` só aceita uma aposta `BET` processada como referência. `ROLLBACK` só aceita uma transação `BET`, `WIN` ou `REFUND` processada, e usa a direção inversa. A referência precisa corresponder ao provedor, jogador, wallet, rodada, moeda, valor e ID externo informados.
+O tipo da operação determina a direção do lançamento: `BET` gera débito; `WIN`, `REFUND` e `OPENING` geram crédito; `LOSS` não movimenta o saldo nem gera lançamento. `WIN` pode referenciar uma aposta `BET` processada do mesmo provedor, jogador, wallet, rodada e moeda; o valor da aposta não precisa ser igual ao valor do prêmio. `REFUND` só aceita uma aposta `BET` processada, e `ROLLBACK` só aceita uma transação `BET`, `WIN` ou `REFUND` processada. Em `REFUND` e `ROLLBACK`, o valor deve ser igual ao da transação referenciada; `ROLLBACK` usa a direção inversa. As referências são identificadas pelo ID externo informado.
 
 A entidade valida uma reversão individual, mas ainda não impede que a mesma transação de referência seja revertida mais de uma vez.
