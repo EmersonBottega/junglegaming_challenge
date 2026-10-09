@@ -10,8 +10,11 @@ import {
 import { WalletRepository } from "../database/wallet.repository";
 import { WalletLedgerRepository } from "../database/wallet-ledger.repository";
 import { WagerTransactionRepository } from "../database/wager-transaction.repository";
+import { OutboxRepository } from "../database/outbox.repository";
 import { createMikroOrmConfig } from "../database/mikro-orm.config";
 import { ProcessPersistedWagerTransaction } from "./process-persisted-wager-transaction";
+import type { IntegrationEvent } from "../domain/integration-event";
+import type { EntityManager } from "@mikro-orm/postgresql";
 
 describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
   let orm: MikroORM;
@@ -42,6 +45,7 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
       wallets,
       transactions,
       new WalletLedgerRepository(orm.em),
+      new OutboxRepository(orm.em),
     );
   });
 
@@ -72,6 +76,9 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("20.00");
     expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
     expect(await countTransactions(wallet.id)).toBe(2);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionProcessed")).toBe(2);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionRejected")).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WalletBalanceChanged")).toBe(2);
   });
 
   test("processes fifty concurrent deliveries of one bet only once", async () => {
@@ -92,6 +99,8 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("75.00");
     expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
     expect(await countTransactions(wallet.id)).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionProcessed")).toBe(2);
+    expect(await countOutboxEvents(wallet.id, "WalletBalanceChanged")).toBe(2);
   });
 
   test("returns an idempotency conflict when the same key has a different payload", async () => {
@@ -137,6 +146,7 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("50.00");
     expect(await countLedger(wallet.id, "DEBIT")).toBe(0);
     expect(await countTransactions(wallet.id)).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionRejected")).toBe(1);
   });
 
   test("rolls back the transaction and wallet update if the ledger insert fails", async () => {
@@ -156,6 +166,7 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("100.00");
     expect(await transactions.findByIdempotencyKey(bet.providerId, bet.idempotencyKey)).toBeUndefined();
     expect(await countLedger(wallet.id, "DEBIT")).toBe(0);
+    expect(await countOutboxEvents(wallet.id)).toBe(2);
   });
 
   test("persists and replays a WIN credit with the original balance", async () => {
@@ -178,6 +189,9 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("135.00");
     expect(await countLedger(wallet.id, "CREDIT")).toBe(2);
     expect(await countKind(wallet.id, WagerTransactionKind.Win)).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionProcessed")).toBe(2);
+    expect(await countOutboxEvents(wallet.id, "WalletBalanceChanged")).toBe(2);
+    expect(await countOutboxPayloadEventId(wallet.id, "WalletBalanceChanged")).toBeTruthy();
   });
 
   test("persists LOSS without changing the wallet or adding a ledger entry", async () => {
@@ -201,6 +215,8 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect(await countLedger(wallet.id, "CREDIT")).toBe(1);
     expect(await countLedger(wallet.id, "DEBIT")).toBe(0);
     expect(await countKind(wallet.id, WagerTransactionKind.Loss)).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionProcessed")).toBe(2);
+    expect(await countOutboxEvents(wallet.id, "WalletBalanceChanged")).toBe(1);
   });
 
   test("retries a WIN in PENDING_REFERENCE after its BET reference is persisted", async () => {
@@ -232,6 +248,7 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect(await countKind(wallet.id, WagerTransactionKind.Win)).toBe(1);
     expect(await countLedger(wallet.id, "CREDIT")).toBe(2);
     expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionPendingReference")).toBe(1);
   });
 
   test("persists a REFUND credit and rejects concurrent duplicate refunds", async () => {
@@ -264,6 +281,7 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect(await countKind(wallet.id, WagerTransactionKind.Refund)).toBe(2);
     expect(await countLedger(wallet.id, "CREDIT")).toBe(2);
     expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionRejected")).toBe(1);
   });
 
   test("persists a ROLLBACK with the inverse movement and prevents duplicate rollback", async () => {
@@ -295,6 +313,7 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("100.00");
     expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
     expect(await countKind(wallet.id, WagerTransactionKind.Rollback)).toBe(2);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionRejected")).toBe(1);
   });
 
   test("persists a ROLLBACK rejection when its inverse debit would overdraw", async () => {
@@ -326,6 +345,39 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("10.00");
     expect(await countKind(wallet.id, WagerTransactionKind.Rollback)).toBe(1);
     expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionRejected")).toBe(1);
+  });
+
+  test("rolls back all financial writes if outbox persistence fails after inserting an event", async () => {
+    const wallet = await createWallet("100.00");
+    const bet = createBet(wallet.id, "25.00");
+    const failingOutbox = new class extends OutboxRepository {
+      override async enqueue(
+        event: IntegrationEvent<unknown>,
+        entityManager: EntityManager = orm.em,
+      ): Promise<void> {
+        await super.enqueue(event, entityManager);
+        throw new Error("Injected failure after outbox insert");
+      }
+    }(orm.em);
+    const failingProcessor = new ProcessPersistedWagerTransaction(
+      orm.em,
+      wallets,
+      transactions,
+      new WalletLedgerRepository(orm.em),
+      failingOutbox,
+    );
+
+    await expect(failingProcessor.execute({
+      transaction: bet,
+      ledgerEntryId: crypto.randomUUID(),
+      processedAt: new Date("2026-10-09T14:01:00.000Z"),
+    })).rejects.toThrow("Injected failure after outbox insert");
+
+    expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("100.00");
+    expect(await transactions.findByIdempotencyKey(bet.providerId, bet.idempotencyKey)).toBeUndefined();
+    expect(await countLedger(wallet.id, "DEBIT")).toBe(0);
+    expect(await countOutboxEvents(wallet.id)).toBe(2);
   });
 
   async function createWallet(initialBalance: string) {
@@ -431,5 +483,26 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
       [walletId, kind],
     );
     return Number(result.count);
+  }
+
+  async function countOutboxEvents(walletId: string, eventType?: string): Promise<number> {
+    const [result] = await orm.em.getConnection().execute(
+      `SELECT count(*)::text AS count
+       FROM "${schema}".outbox_message
+       WHERE aggregate_id = ?${eventType ? " AND event_type = ?" : ""}`,
+      eventType ? [walletId, eventType] : [walletId],
+    );
+    return Number(result.count);
+  }
+
+  async function countOutboxPayloadEventId(walletId: string, eventType: string): Promise<string | null> {
+    const [result] = await orm.em.getConnection().execute(
+      `SELECT payload->>'eventId' AS event_id
+       FROM "${schema}".outbox_message
+       WHERE aggregate_id = ? AND event_type = ?
+       LIMIT 1`,
+      [walletId, eventType],
+    );
+    return result?.event_id ?? null;
   }
 });

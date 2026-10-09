@@ -1,6 +1,13 @@
 import type { EntityManager } from "@mikro-orm/postgresql";
 import { Money } from "../domain/money";
 import { Wallet, type OpenWalletProps } from "../domain/wallet";
+import {
+  WagerTransactionProcessed,
+  WalletBalanceChanged,
+} from "../domain/integration-event";
+import { LedgerDirection } from "../domain/wallet-ledger-entry";
+import { WagerTransactionKind } from "../domain/wager-transaction";
+import { OutboxRepository } from "./outbox.repository";
 
 interface WalletRow {
   id: string;
@@ -55,8 +62,13 @@ function requiredDate(value: Date | string, field: string): Date {
 
 export class WalletRepository {
   private readonly schema: string;
+  private readonly outbox: OutboxRepository;
 
-  constructor(private readonly entityManager: EntityManager) {
+  constructor(
+    private readonly entityManager: EntityManager,
+    outbox?: OutboxRepository,
+  ) {
+    this.outbox = outbox ?? new OutboxRepository(entityManager);
     const schema = entityManager.config.get("schema") ?? "public";
     if (!/^[a-z_][a-z0-9_]*$/.test(schema)) {
       throw new Error("Wallet repository schema name is invalid");
@@ -121,6 +133,44 @@ export class WalletRepository {
           moneyToCents(openingEntry.balanceAfter),
           openingEntry.createdAt,
         ],
+      );
+
+      const eventContext = {
+        correlationId: openingEntry.transactionId,
+        occurredAt: openingEntry.createdAt,
+      };
+      await this.outbox.enqueue(
+        new WagerTransactionProcessed({
+          ...eventContext,
+          eventId: crypto.randomUUID(),
+          aggregateId: wallet.id,
+          data: {
+            transactionId: openingEntry.transactionId,
+            walletId: wallet.id,
+            playerId: wallet.playerId,
+            kind: WagerTransactionKind.Opening,
+            money: openingEntry.money.toJSON(),
+            balance: openingEntry.balanceAfter.toJSON(),
+          },
+        }),
+        em,
+      );
+      await this.outbox.enqueue(
+        new WalletBalanceChanged({
+          ...eventContext,
+          eventId: crypto.randomUUID(),
+          aggregateId: wallet.id,
+          data: {
+            walletId: wallet.id,
+            transactionId: openingEntry.transactionId,
+            direction: LedgerDirection.Credit,
+            money: openingEntry.money.toJSON(),
+            balanceBefore: openingEntry.balanceBefore.toJSON(),
+            balanceAfter: openingEntry.balanceAfter.toJSON(),
+            walletVersion: wallet.version,
+          },
+        }),
+        em,
       );
     });
 

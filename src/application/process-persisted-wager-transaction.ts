@@ -6,6 +6,13 @@ import {
   WagerTransactionStatus,
 } from "../domain/wager-transaction";
 import { Money } from "../domain/money";
+import {
+  WagerTransactionPendingReference,
+  WagerTransactionProcessed,
+  WagerTransactionRejected,
+  WalletBalanceChanged,
+  type EventContext,
+} from "../domain/integration-event";
 import { WalletLedgerEntry } from "../domain/wallet-ledger-entry";
 import { processBet } from "./process-bet";
 import { processWin } from "./process-win";
@@ -14,6 +21,7 @@ import { processRefund } from "./process-refund";
 import { processRollback } from "./process-rollback";
 import { WalletRepository } from "../database/wallet.repository";
 import { WalletLedgerRepository } from "../database/wallet-ledger.repository";
+import { OutboxRepository } from "../database/outbox.repository";
 import { WagerTransactionRepository } from "../database/wager-transaction.repository";
 
 export type PersistedWagerTransactionResult =
@@ -63,12 +71,14 @@ export class ProcessPersistedWagerTransaction {
     private readonly wallets: WalletRepository,
     private readonly transactions: WagerTransactionRepository,
     private readonly ledger: WalletLedgerRepository,
+    private readonly outbox: OutboxRepository,
   ) {}
 
   async execute(props: {
     transaction: WagerTransaction;
     ledgerEntryId: string;
     processedAt: Date;
+    correlationId?: string;
   }): Promise<PersistedWagerTransactionResult> {
     const { transaction: requestedTransaction } = props;
 
@@ -152,6 +162,44 @@ export class ProcessPersistedWagerTransaction {
           await this.wallets.persistBalance(wallet, em);
           await this.ledger.create(result.ledgerEntry, em);
         }
+        await this.outbox.enqueue(
+          new WagerTransactionProcessed({
+            ...this.eventContext(transaction, props),
+            aggregateId: wallet.id,
+            data: {
+              transactionId: transaction.id,
+              providerId: transaction.providerId,
+              externalTransactionId: transaction.externalTransactionId,
+              walletId: wallet.id,
+              playerId: transaction.playerId,
+              kind: transaction.kind,
+              money: transaction.money.toJSON(),
+              balance: result.balance.toJSON(),
+              ...(transaction.referenceExternalTransactionId
+                ? { referenceExternalTransactionId: transaction.referenceExternalTransactionId }
+                : {}),
+            },
+          }),
+          em,
+        );
+        if (hasLedgerEntry(result)) {
+          await this.outbox.enqueue(
+            new WalletBalanceChanged({
+              ...this.eventContext(transaction, props),
+              aggregateId: wallet.id,
+              data: {
+                walletId: wallet.id,
+                transactionId: transaction.id,
+                direction: result.ledgerEntry.direction,
+                money: result.ledgerEntry.money.toJSON(),
+                balanceBefore: result.ledgerEntry.balanceBefore.toJSON(),
+                balanceAfter: result.ledgerEntry.balanceAfter.toJSON(),
+                walletVersion: wallet.version,
+              },
+            }),
+            em,
+          );
+        }
 
         return {
           status: result.status,
@@ -164,6 +212,23 @@ export class ProcessPersistedWagerTransaction {
 
       await this.transactions.update(transaction, undefined, em);
       if (result.status === WagerTransactionStatus.Rejected) {
+        await this.outbox.enqueue(
+          new WagerTransactionRejected({
+            ...this.eventContext(transaction, props),
+            aggregateId: wallet.id,
+            data: {
+              transactionId: transaction.id,
+              providerId: transaction.providerId,
+              externalTransactionId: transaction.externalTransactionId,
+              walletId: wallet.id,
+              playerId: transaction.playerId,
+              kind: transaction.kind,
+              money: transaction.money.toJSON(),
+              failureCode: result.failureCode,
+            },
+          }),
+          em,
+        );
         return {
           status: result.status,
           transactionId: transaction.id,
@@ -172,12 +237,41 @@ export class ProcessPersistedWagerTransaction {
         };
       }
 
+      await this.outbox.enqueue(
+        new WagerTransactionPendingReference({
+          ...this.eventContext(transaction, props),
+          aggregateId: wallet.id,
+          data: {
+            transactionId: transaction.id,
+            providerId: transaction.providerId,
+            externalTransactionId: transaction.externalTransactionId,
+            walletId: wallet.id,
+            playerId: transaction.playerId,
+            kind: transaction.kind,
+            money: transaction.money.toJSON(),
+            referenceExternalTransactionId: transaction.referenceExternalTransactionId!,
+          },
+        }),
+        em,
+      );
       return {
         status: result.status,
         transactionId: transaction.id,
         idempotentReplay: retryingPendingReference,
       };
     });
+  }
+
+  private eventContext(
+    transaction: WagerTransaction,
+    props: { processedAt: Date; correlationId?: string },
+  ): EventContext {
+    return {
+      eventId: crypto.randomUUID(),
+      correlationId: props.correlationId ?? transaction.id,
+      causationId: transaction.id,
+      occurredAt: props.processedAt,
+    };
   }
 
   private process(props: {

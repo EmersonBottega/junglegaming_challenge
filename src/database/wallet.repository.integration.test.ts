@@ -50,6 +50,7 @@ describe("WalletRepository with PostgreSQL", () => {
     expect(reloaded?.version).toBe(opened.version);
     expect(await countRows("wager_transaction", walletId)).toBe(0);
     expect(await countRows("wallet_ledger_entry", walletId)).toBe(0);
+    expect(await countOutboxEvents(walletId)).toBe(0);
   });
 
   test("persists wallet, opening transaction, and ledger entry atomically", async () => {
@@ -86,6 +87,17 @@ describe("WalletRepository with PostgreSQL", () => {
     expect(String(entry.amount_cents)).toBe("2550");
     expect(String(entry.balance_before_cents)).toBe("0");
     expect(String(entry.balance_after_cents)).toBe("2550");
+    expect(await countOutboxEvents(walletId, "WagerTransactionProcessed")).toBe(1);
+    expect(await countOutboxEvents(walletId, "WalletBalanceChanged")).toBe(1);
+    const [balanceEvent] = await orm.em.getConnection().execute(
+      `SELECT payload->'data'->>'walletVersion' AS wallet_version,
+              payload->'data'->'money'->>'amount' AS amount
+       FROM "${schema}".outbox_message
+       WHERE aggregate_id = ? AND event_type = 'WalletBalanceChanged'`,
+      [walletId],
+    );
+    expect(balanceEvent.wallet_version).toBe("1");
+    expect(balanceEvent.amount).toBe("25.50");
   });
 
   test("round-trips balances beyond JavaScript's safe integer range exactly", async () => {
@@ -128,6 +140,7 @@ describe("WalletRepository with PostgreSQL", () => {
     expect(await repository.findById(attemptedWalletId)).toBeUndefined();
     expect(await countRows("wager_transaction", attemptedWalletId)).toBe(0);
     expect(await countRows("wallet_ledger_entry", attemptedWalletId)).toBe(0);
+    expect(await countOutboxEvents(attemptedWalletId)).toBe(0);
   });
 
   test("returns undefined when the wallet id does not exist", async () => {
@@ -138,6 +151,16 @@ describe("WalletRepository with PostgreSQL", () => {
     const [result] = await orm.em.getConnection().execute(
       `SELECT count(*)::text AS count FROM "${schema}".${table} WHERE wallet_id = ?`,
       [walletId],
+    );
+    return Number(result.count);
+  }
+
+  async function countOutboxEvents(walletId: string, eventType?: string) {
+    const [result] = await orm.em.getConnection().execute(
+      `SELECT count(*)::text AS count
+       FROM "${schema}".outbox_message
+       WHERE aggregate_id = ?${eventType ? " AND event_type = ?" : ""}`,
+      eventType ? [walletId, eventType] : [walletId],
     );
     return Number(result.count);
   }
