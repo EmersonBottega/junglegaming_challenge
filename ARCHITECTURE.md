@@ -26,6 +26,8 @@ As transações serão guardadas em uma tabela própria. A chave de idempotênci
 
 `WalletRepository` abre e busca wallets no PostgreSQL. Ao abrir uma wallet com saldo positivo, grava a wallet, a transação interna `OPENING` e seu lançamento de crédito na mesma transação do banco. Com saldo zero, grava somente a wallet. Ao carregar uma wallet, converte os centavos do PostgreSQL de volta para `Money` sem passar por números de ponto flutuante.
 
+`WagerTransactionRepository` grava e busca transações de provedores por ID interno, chave de idempotência ou ID externo. Ao salvar uma transação processada, também registra o saldo resultante daquela operação para que o chamador possa devolver a resposta original em um reenvio. O repositório aceita o `EntityManager` da transação chamadora nas operações de escrita, permitindo que a camada de aplicação coordene a transação da aposta com a wallet e o ledger.
+
 ### Como o dinheiro é representado
 
 As entradas e saídas usam strings decimais com duas casas, por exemplo `"25.00"`. Dentro do domínio, `Money` guarda o valor como centavos em `bigint`. Assim, uma soma ou subtração não depende de ponto flutuante e não sofre erros de arredondamento.
