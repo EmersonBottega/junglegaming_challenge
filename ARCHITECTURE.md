@@ -22,6 +22,8 @@ Durante a operação, o banco bloqueará a wallet afetada até terminar. Assim, 
 
 O próprio banco também impedirá criar mais de uma wallet para o mesmo jogador e moeda, salvar um saldo negativo ou alterar e apagar lançamentos do ledger. Cada wallet também terá no máximo um lançamento para a mesma transação.
 
+As transações serão guardadas em uma tabela própria. A chave de idempotência e o ID externo serão únicos dentro de cada provedor, para que provedores diferentes possam usar os mesmos valores sem conflito. As operações internas `OPENING` não terão dados de provedor. Cada transação terá seu saldo resultante registrado quando for processada; assim, uma repetição pode devolver o saldo daquela operação, mesmo que a wallet já tenha mudado depois. O ledger só aceitará lançamentos ligados a uma transação existente. Quando uma referência for resolvida, o banco também verificará que a transação referenciada pertence ao mesmo provedor, jogador, wallet, moeda e rodada.
+
 ### Como o dinheiro é representado
 
 As entradas e saídas usam strings decimais com duas casas, por exemplo `"25.00"`. Dentro do domínio, `Money` guarda o valor como centavos em `bigint`. Assim, uma soma ou subtração não depende de ponto flutuante e não sofre erros de arredondamento.

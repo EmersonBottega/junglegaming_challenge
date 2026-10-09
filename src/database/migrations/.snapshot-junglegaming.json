@@ -1,516 +1,1089 @@
 {
-  "name": "public",
-  "namespaces": [
-    "public",
-    "wallet_ledger_test_3939fbaf1c47446e9d5a659ab266972b"
-  ],
-  "tables": [
-    {
-      "name": "wallet",
-      "schema": "public",
-      "columns": {
-        "balance_cents": {
-          "name": "balance_cents",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "currency": {
-          "name": "currency",
-          "type": "varchar(3)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 3,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
-        "id": {
-          "name": "id",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": true,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
-        },
-        "player_id": {
-          "name": "player_id",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": true,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "version": {
-          "name": "version",
-          "type": "int",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "integer"
-        }
-      },
-      "indexes": [
-        {
-          "columnNames": [
-            "id"
-          ],
-          "composite": false,
-          "constraint": true,
-          "keyName": "wallet_pkey",
-          "primary": true,
-          "unique": true
-        },
-        {
-          "columnNames": [
-            "player_id",
-            "currency"
-          ],
-          "composite": true,
-          "constraint": true,
-          "keyName": "wallet_player_currency_unique",
-          "primary": false,
-          "unique": true
-        }
-      ],
-      "checks": [
-        {
-          "name": "wallet_balance_cents_check",
-          "expression": "balance_cents >= 0",
-          "definition": "CHECK ((balance_cents >= 0))",
-          "columnName": "balance_cents"
-        },
-        {
-          "name": "wallet_currency_check",
-          "expression": "currency ~ '^[A-Z]{3}$'::text",
-          "definition": "CHECK (((currency)::text ~ '^[A-Z]{3}$'::text))",
-          "columnName": "currency"
-        },
-        {
-          "name": "wallet_id_check",
-          "expression": "btrim(id) <> ''::text",
-          "definition": "CHECK ((btrim(id) <> ''::text))",
-          "columnName": "id"
-        },
-        {
-          "name": "wallet_player_id_check",
-          "expression": "btrim(player_id) <> ''::text",
-          "definition": "CHECK ((btrim(player_id) <> ''::text))",
-          "columnName": "player_id"
-        },
-        {
-          "name": "wallet_version_check",
-          "expression": "version >= 1",
-          "definition": "CHECK ((version >= 1))",
-          "columnName": "version"
-        }
-      ],
-      "triggers": [],
-      "foreignKeys": {},
-      "comment": null
-    },
-    {
-      "name": "wallet_ledger_entry",
-      "schema": "public",
-      "columns": {
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        },
-        "balance_after_cents": {
-          "name": "balance_after_cents",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        },
-        "balance_before_cents": {
-          "name": "balance_before_cents",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "direction": {
-          "name": "direction",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [
-            "DEBIT",
-            "CREDIT"
-          ],
-          "mappedType": "enum"
-        },
-        "id": {
-          "name": "id",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": true,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
-        },
-        "transaction_id": {
-          "name": "transaction_id",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
-        },
-        "wallet_id": {
-          "name": "wallet_id",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": true,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
-        }
-      },
-      "indexes": [
-        {
-          "columnNames": [
-            "id"
-          ],
-          "composite": false,
-          "constraint": true,
-          "keyName": "wallet_ledger_entry_pkey",
-          "primary": true,
-          "unique": true
-        },
-        {
-          "columnNames": [
-            "wallet_id",
-            "transaction_id"
-          ],
-          "composite": true,
-          "constraint": true,
-          "keyName": "wallet_ledger_entry_transaction_unique",
-          "primary": false,
-          "unique": true
-        }
-      ],
-      "checks": [
-        {
-          "name": "wallet_ledger_entry_amount_cents_check",
-          "expression": "amount_cents > 0",
-          "definition": "CHECK ((amount_cents > 0))",
-          "columnName": "amount_cents"
-        },
-        {
-          "name": "wallet_ledger_entry_balance_after_cents_check",
-          "expression": "balance_after_cents >= 0",
-          "definition": "CHECK ((balance_after_cents >= 0))",
-          "columnName": "balance_after_cents"
-        },
-        {
-          "name": "wallet_ledger_entry_balance_before_cents_check",
-          "expression": "balance_before_cents >= 0",
-          "definition": "CHECK ((balance_before_cents >= 0))",
-          "columnName": "balance_before_cents"
-        },
-        {
-          "name": "wallet_ledger_entry_balance_matches_direction",
-          "expression": "((direction = 'CREDIT'::text) AND (balance_after_cents = (balance_before_cents + amount_cents))) OR ((direction = 'DEBIT'::text) AND (balance_after_cents = (balance_before_cents - amount_cents)))",
-          "definition": "CHECK ((((direction = 'CREDIT'::text) AND (balance_after_cents = (balance_before_cents + amount_cents))) OR ((direction = 'DEBIT'::text) AND (balance_after_cents = (balance_before_cents - amount_cents)))))",
-          "columnName": "amount_cents"
-        },
-        {
-          "name": "wallet_ledger_entry_direction_check",
-          "expression": "\"direction\" in ('DEBIT', 'CREDIT')",
-          "definition": "check (\"direction\" in ('DEBIT', 'CREDIT'))",
-          "columnName": "direction"
-        },
-        {
-          "name": "wallet_ledger_entry_id_check",
-          "expression": "btrim(id) <> ''::text",
-          "definition": "CHECK ((btrim(id) <> ''::text))",
-          "columnName": "id"
-        },
-        {
-          "name": "wallet_ledger_entry_transaction_id_check",
-          "expression": "btrim(transaction_id) <> ''::text",
-          "definition": "CHECK ((btrim(transaction_id) <> ''::text))",
-          "columnName": "transaction_id"
-        }
-      ],
-      "triggers": [
-        {
-          "name": "wallet_ledger_entry_immutable",
-          "timing": "before",
-          "events": [
-            "delete",
-            "update"
-          ],
-          "forEach": "row",
-          "body": ""
-        }
-      ],
-      "foreignKeys": {
-        "wallet_ledger_entry_wallet_id_fkey": {
-          "columnNames": [
-            "wallet_id"
-          ],
-          "constraintName": "wallet_ledger_entry_wallet_id_fkey",
-          "localTableName": "public.wallet_ledger_entry",
-          "referencedColumnNames": [
-            "id"
-          ],
-          "referencedTableName": "public.wallet",
-          "deleteRule": "restrict"
-        }
-      },
-      "comment": null
-    },
-    {
-      "name": "mikro_orm_migrations",
-      "schema": "wallet_ledger_test_3939fbaf1c47446e9d5a659ab266972b",
-      "columns": {
-        "executed_at": {
-          "name": "executed_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": "current_timestamp(6)",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "id": {
-          "name": "id",
-          "type": "int",
-          "unsigned": false,
-          "autoincrement": true,
-          "primary": true,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "integer"
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        }
-      },
-      "indexes": [
-        {
-          "columnNames": [
-            "id"
-          ],
-          "composite": false,
-          "constraint": true,
-          "keyName": "mikro_orm_migrations_pkey",
-          "primary": true,
-          "unique": true
-        },
-        {
-          "columnNames": [
-            "id"
-          ],
-          "composite": false,
-          "constraint": true,
-          "keyName": "mikro_orm_migrations_pkey",
-          "primary": true,
-          "unique": true
-        }
-      ],
-      "checks": [],
-      "triggers": [],
-      "foreignKeys": {},
-      "comment": null
-    }
-  ],
-  "views": [],
-  "nativeEnums": {}
+    "name":  "public",
+    "namespaces":  [
+                       "public"
+                   ],
+    "tables":  [
+                   {
+                       "name":  "wager_transaction",
+                       "schema":  "public",
+                       "columns":  {
+                                       "amount_cents":  {
+                                                            "name":  "amount_cents",
+                                                            "type":  "bigint",
+                                                            "unsigned":  false,
+                                                            "autoincrement":  false,
+                                                            "primary":  false,
+                                                            "nullable":  false,
+                                                            "unique":  false,
+                                                            "length":  null,
+                                                            "precision":  null,
+                                                            "scale":  null,
+                                                            "default":  null,
+                                                            "comment":  null,
+                                                            "collation":  null,
+                                                            "enumItems":  [
+
+                                                                          ],
+                                                            "mappedType":  "bigint"
+                                                        },
+                                       "created_at":  {
+                                                          "name":  "created_at",
+                                                          "type":  "timestamptz(6)",
+                                                          "unsigned":  false,
+                                                          "autoincrement":  false,
+                                                          "primary":  false,
+                                                          "nullable":  false,
+                                                          "unique":  false,
+                                                          "length":  6,
+                                                          "precision":  null,
+                                                          "scale":  null,
+                                                          "default":  null,
+                                                          "comment":  null,
+                                                          "collation":  null,
+                                                          "enumItems":  [
+
+                                                                        ],
+                                                          "mappedType":  "datetime"
+                                                      },
+                                       "currency":  {
+                                                        "name":  "currency",
+                                                        "type":  "varchar(3)",
+                                                        "unsigned":  false,
+                                                        "autoincrement":  false,
+                                                        "primary":  false,
+                                                        "nullable":  false,
+                                                        "unique":  false,
+                                                        "length":  3,
+                                                        "precision":  null,
+                                                        "scale":  null,
+                                                        "default":  null,
+                                                        "comment":  null,
+                                                        "collation":  null,
+                                                        "enumItems":  [
+
+                                                                      ],
+                                                        "mappedType":  "string"
+                                                    },
+                                       "external_transaction_id":  {
+                                                                       "name":  "external_transaction_id",
+                                                                       "type":  "text",
+                                                                       "unsigned":  false,
+                                                                       "autoincrement":  false,
+                                                                       "primary":  false,
+                                                                       "nullable":  true,
+                                                                       "unique":  false,
+                                                                       "length":  null,
+                                                                       "precision":  null,
+                                                                       "scale":  null,
+                                                                       "default":  null,
+                                                                       "comment":  null,
+                                                                       "collation":  null,
+                                                                       "enumItems":  [
+
+                                                                                     ],
+                                                                       "mappedType":  "text"
+                                                                   },
+                                       "failure_code":  {
+                                                            "name":  "failure_code",
+                                                            "type":  "text",
+                                                            "unsigned":  false,
+                                                            "autoincrement":  false,
+                                                            "primary":  false,
+                                                            "nullable":  true,
+                                                            "unique":  false,
+                                                            "length":  null,
+                                                            "precision":  null,
+                                                            "scale":  null,
+                                                            "default":  null,
+                                                            "comment":  null,
+                                                            "collation":  null,
+                                                            "enumItems":  [
+
+                                                                          ],
+                                                            "mappedType":  "text"
+                                                        },
+                                       "game_id":  {
+                                                       "name":  "game_id",
+                                                       "type":  "text",
+                                                       "unsigned":  false,
+                                                       "autoincrement":  false,
+                                                       "primary":  false,
+                                                       "nullable":  true,
+                                                       "unique":  false,
+                                                       "length":  null,
+                                                       "precision":  null,
+                                                       "scale":  null,
+                                                       "default":  null,
+                                                       "comment":  null,
+                                                       "collation":  null,
+                                                       "enumItems":  [
+
+                                                                     ],
+                                                       "mappedType":  "text"
+                                                   },
+                                       "id":  {
+                                                  "name":  "id",
+                                                  "type":  "text",
+                                                  "unsigned":  false,
+                                                  "autoincrement":  false,
+                                                  "primary":  true,
+                                                  "nullable":  false,
+                                                  "unique":  false,
+                                                  "length":  null,
+                                                  "precision":  null,
+                                                  "scale":  null,
+                                                  "default":  null,
+                                                  "comment":  null,
+                                                  "collation":  null,
+                                                  "enumItems":  [
+
+                                                                ],
+                                                  "mappedType":  "text"
+                                              },
+                                       "idempotency_key":  {
+                                                               "name":  "idempotency_key",
+                                                               "type":  "text",
+                                                               "unsigned":  false,
+                                                               "autoincrement":  false,
+                                                               "primary":  false,
+                                                               "nullable":  true,
+                                                               "unique":  false,
+                                                               "length":  null,
+                                                               "precision":  null,
+                                                               "scale":  null,
+                                                               "default":  null,
+                                                               "comment":  null,
+                                                               "collation":  null,
+                                                               "enumItems":  [
+
+                                                                             ],
+                                                               "mappedType":  "text"
+                                                           },
+                                       "kind":  {
+                                                    "name":  "kind",
+                                                    "type":  "text",
+                                                    "unsigned":  false,
+                                                    "autoincrement":  false,
+                                                    "primary":  false,
+                                                    "nullable":  false,
+                                                    "unique":  false,
+                                                    "length":  null,
+                                                    "precision":  null,
+                                                    "scale":  null,
+                                                    "default":  null,
+                                                    "comment":  null,
+                                                    "collation":  null,
+                                                    "enumItems":  [
+                                                                      "OPENING",
+                                                                      "BET",
+                                                                      "WIN",
+                                                                      "LOSS",
+                                                                      "REFUND",
+                                                                      "ROLLBACK"
+                                                                  ],
+                                                    "mappedType":  "enum"
+                                                },
+                                       "payload_hash":  {
+                                                            "name":  "payload_hash",
+                                                            "type":  "text",
+                                                            "unsigned":  false,
+                                                            "autoincrement":  false,
+                                                            "primary":  false,
+                                                            "nullable":  true,
+                                                            "unique":  false,
+                                                            "length":  null,
+                                                            "precision":  null,
+                                                            "scale":  null,
+                                                            "default":  null,
+                                                            "comment":  null,
+                                                            "collation":  null,
+                                                            "enumItems":  [
+
+                                                                          ],
+                                                            "mappedType":  "text"
+                                                        },
+                                       "player_id":  {
+                                                         "name":  "player_id",
+                                                         "type":  "text",
+                                                         "unsigned":  false,
+                                                         "autoincrement":  false,
+                                                         "primary":  false,
+                                                         "nullable":  false,
+                                                         "unique":  false,
+                                                         "length":  null,
+                                                         "precision":  null,
+                                                         "scale":  null,
+                                                         "default":  null,
+                                                         "comment":  null,
+                                                         "collation":  null,
+                                                         "enumItems":  [
+
+                                                                       ],
+                                                         "mappedType":  "text"
+                                                     },
+                                       "processed_at":  {
+                                                            "name":  "processed_at",
+                                                            "type":  "timestamptz(6)",
+                                                            "unsigned":  false,
+                                                            "autoincrement":  false,
+                                                            "primary":  false,
+                                                            "nullable":  true,
+                                                            "unique":  false,
+                                                            "length":  6,
+                                                            "precision":  null,
+                                                            "scale":  null,
+                                                            "default":  null,
+                                                            "comment":  null,
+                                                            "collation":  null,
+                                                            "enumItems":  [
+
+                                                                          ],
+                                                            "mappedType":  "datetime"
+                                                        },
+                                       "provider_id":  {
+                                                           "name":  "provider_id",
+                                                           "type":  "text",
+                                                           "unsigned":  false,
+                                                           "autoincrement":  false,
+                                                           "primary":  false,
+                                                           "nullable":  true,
+                                                           "unique":  true,
+                                                           "length":  null,
+                                                           "precision":  null,
+                                                           "scale":  null,
+                                                           "default":  null,
+                                                           "comment":  null,
+                                                           "collation":  null,
+                                                           "enumItems":  [
+
+                                                                         ],
+                                                           "mappedType":  "text"
+                                                       },
+                                       "reference_external_transaction_id":  {
+                                                                                 "name":  "reference_external_transaction_id",
+                                                                                 "type":  "text",
+                                                                                 "unsigned":  false,
+                                                                                 "autoincrement":  false,
+                                                                                 "primary":  false,
+                                                                                 "nullable":  true,
+                                                                                 "unique":  false,
+                                                                                 "length":  null,
+                                                                                 "precision":  null,
+                                                                                 "scale":  null,
+                                                                                 "default":  null,
+                                                                                 "comment":  null,
+                                                                                 "collation":  null,
+                                                                                 "enumItems":  [
+
+                                                                                               ],
+                                                                                 "mappedType":  "text"
+                                                                             },
+                                       "reference_transaction_id":  {
+                                                                        "name":  "reference_transaction_id",
+                                                                        "type":  "text",
+                                                                        "unsigned":  false,
+                                                                        "autoincrement":  false,
+                                                                        "primary":  false,
+                                                                        "nullable":  true,
+                                                                        "unique":  true,
+                                                                        "length":  null,
+                                                                        "precision":  null,
+                                                                        "scale":  null,
+                                                                        "default":  null,
+                                                                        "comment":  null,
+                                                                        "collation":  null,
+                                                                        "enumItems":  [
+
+                                                                                      ],
+                                                                        "mappedType":  "text"
+                                                                    },
+                                       "result_balance_cents":  {
+                                                                    "name":  "result_balance_cents",
+                                                                    "type":  "bigint",
+                                                                    "unsigned":  false,
+                                                                    "autoincrement":  false,
+                                                                    "primary":  false,
+                                                                    "nullable":  true,
+                                                                    "unique":  false,
+                                                                    "length":  null,
+                                                                    "precision":  null,
+                                                                    "scale":  null,
+                                                                    "default":  null,
+                                                                    "comment":  null,
+                                                                    "collation":  null,
+                                                                    "enumItems":  [
+
+                                                                                  ],
+                                                                    "mappedType":  "bigint"
+                                                                },
+                                       "round_id":  {
+                                                        "name":  "round_id",
+                                                        "type":  "text",
+                                                        "unsigned":  false,
+                                                        "autoincrement":  false,
+                                                        "primary":  false,
+                                                        "nullable":  true,
+                                                        "unique":  false,
+                                                        "length":  null,
+                                                        "precision":  null,
+                                                        "scale":  null,
+                                                        "default":  null,
+                                                        "comment":  null,
+                                                        "collation":  null,
+                                                        "enumItems":  [
+
+                                                                      ],
+                                                        "mappedType":  "text"
+                                                    },
+                                       "status":  {
+                                                      "name":  "status",
+                                                      "type":  "text",
+                                                      "unsigned":  false,
+                                                      "autoincrement":  false,
+                                                      "primary":  false,
+                                                      "nullable":  false,
+                                                      "unique":  false,
+                                                      "length":  null,
+                                                      "precision":  null,
+                                                      "scale":  null,
+                                                      "default":  null,
+                                                      "comment":  null,
+                                                      "collation":  null,
+                                                      "enumItems":  [
+                                                                        "PENDING",
+                                                                        "PENDING_REFERENCE",
+                                                                        "PROCESSED",
+                                                                        "REJECTED",
+                                                                        "FAILED"
+                                                                    ],
+                                                      "mappedType":  "enum"
+                                                  },
+                                       "wallet_id":  {
+                                                         "name":  "wallet_id",
+                                                         "type":  "text",
+                                                         "unsigned":  false,
+                                                         "autoincrement":  false,
+                                                         "primary":  false,
+                                                         "nullable":  false,
+                                                         "unique":  false,
+                                                         "length":  null,
+                                                         "precision":  null,
+                                                         "scale":  null,
+                                                         "default":  null,
+                                                         "comment":  null,
+                                                         "collation":  null,
+                                                         "enumItems":  [
+
+                                                                       ],
+                                                         "mappedType":  "text"
+                                                     }
+                                   },
+                       "indexes":  [
+                                       {
+                                           "columnNames":  [
+                                                               "provider_id",
+                                                               "external_transaction_id"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  true,
+                                           "keyName":  "wager_transaction_external_id_unique",
+                                           "primary":  false,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "provider_id",
+                                                               "reference_external_transaction_id"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  false,
+                                           "keyName":  "wager_transaction_external_reference_idx",
+                                           "primary":  false,
+                                           "unique":  false,
+                                           "where":  "reference_external_transaction_id IS NOT NULL"
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "provider_id",
+                                                               "idempotency_key"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  true,
+                                           "keyName":  "wager_transaction_idempotency_unique",
+                                           "primary":  false,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "created_at"
+                                                           ],
+                                           "composite":  false,
+                                           "constraint":  false,
+                                           "keyName":  "wager_transaction_pending_reference_idx",
+                                           "primary":  false,
+                                           "unique":  false,
+                                           "where":  "status = \u0027PENDING_REFERENCE\u0027::text"
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "id"
+                                                           ],
+                                           "composite":  false,
+                                           "constraint":  true,
+                                           "keyName":  "wager_transaction_pkey",
+                                           "primary":  true,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "reference_transaction_id",
+                                                               "kind"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  false,
+                                           "keyName":  "wager_transaction_reference_kind_unique",
+                                           "primary":  false,
+                                           "unique":  true,
+                                           "where":  "(kind = ANY (ARRAY[\u0027REFUND\u0027::text, \u0027ROLLBACK\u0027::text])) AND (reference_transaction_id IS NOT NULL)"
+                                       }
+                                   ],
+                       "checks":  [
+                                      {
+                                          "name":  "wager_transaction_amount_cents_check",
+                                          "expression":  "amount_cents \u003e 0",
+                                          "definition":  "CHECK ((amount_cents \u003e 0))",
+                                          "columnName":  "amount_cents"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_currency_check",
+                                          "expression":  "currency ~ \u0027^[A-Z]{3}$\u0027::text",
+                                          "definition":  "CHECK (((currency)::text ~ \u0027^[A-Z]{3}$\u0027::text))",
+                                          "columnName":  "currency"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_failure_code_check",
+                                          "expression":  "(failure_code IS NULL) OR (failure_code = ANY (ARRAY[\u0027INVALID_REFERENCE\u0027::text, \u0027REFERENCE_NOT_FOUND\u0027::text, \u0027DUPLICATE_REVERSAL\u0027::text, \u0027INSUFFICIENT_FUNDS\u0027::text, \u0027REVERSAL_WOULD_OVERDRAW\u0027::text, \u0027INFRASTRUCTURE_FAILURE\u0027::text]))",
+                                          "definition":  "CHECK (((failure_code IS NULL) OR (failure_code = ANY (ARRAY[\u0027INVALID_REFERENCE\u0027::text, \u0027REFERENCE_NOT_FOUND\u0027::text, \u0027DUPLICATE_REVERSAL\u0027::text, \u0027INSUFFICIENT_FUNDS\u0027::text, \u0027REVERSAL_WOULD_OVERDRAW\u0027::text, \u0027INFRASTRUCTURE_FAILURE\u0027::text]))))",
+                                          "columnName":  "failure_code"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_id_check",
+                                          "expression":  "btrim(id) \u003c\u003e \u0027\u0027::text",
+                                          "definition":  "CHECK ((btrim(id) \u003c\u003e \u0027\u0027::text))",
+                                          "columnName":  "id"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_internal_reference_check",
+                                          "expression":  "(reference_transaction_id IS NULL) OR (kind = ANY (ARRAY[\u0027WIN\u0027::text, \u0027REFUND\u0027::text, \u0027ROLLBACK\u0027::text]))",
+                                          "definition":  "CHECK (((reference_transaction_id IS NULL) OR (kind = ANY (ARRAY[\u0027WIN\u0027::text, \u0027REFUND\u0027::text, \u0027ROLLBACK\u0027::text]))))",
+                                          "columnName":  "kind"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_kind_check",
+                                          "expression":  "\"kind\" in (\u0027OPENING\u0027, \u0027BET\u0027, \u0027WIN\u0027, \u0027LOSS\u0027, \u0027REFUND\u0027, \u0027ROLLBACK\u0027)",
+                                          "definition":  "check (\"kind\" in (\u0027OPENING\u0027, \u0027BET\u0027, \u0027WIN\u0027, \u0027LOSS\u0027, \u0027REFUND\u0027, \u0027ROLLBACK\u0027))",
+                                          "columnName":  "kind"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_opening_fields_check",
+                                          "expression":  "(kind \u003c\u003e \u0027OPENING\u0027::text) OR ((reference_external_transaction_id IS NULL) AND (reference_transaction_id IS NULL) AND (failure_code IS NULL) AND (result_balance_cents IS NOT NULL) AND (processed_at IS NOT NULL))",
+                                          "definition":  "CHECK (((kind \u003c\u003e \u0027OPENING\u0027::text) OR ((reference_external_transaction_id IS NULL) AND (reference_transaction_id IS NULL) AND (failure_code IS NULL) AND (result_balance_cents IS NOT NULL) AND (processed_at IS NOT NULL))))",
+                                          "columnName":  "failure_code"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_player_id_check",
+                                          "expression":  "btrim(player_id) \u003c\u003e \u0027\u0027::text",
+                                          "definition":  "CHECK ((btrim(player_id) \u003c\u003e \u0027\u0027::text))",
+                                          "columnName":  "player_id"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_processed_reference_check",
+                                          "expression":  "(status \u003c\u003e \u0027PROCESSED\u0027::text) OR (kind \u003c\u003e ALL (ARRAY[\u0027REFUND\u0027::text, \u0027ROLLBACK\u0027::text])) OR (reference_transaction_id IS NOT NULL)",
+                                          "definition":  "CHECK (((status \u003c\u003e \u0027PROCESSED\u0027::text) OR (kind \u003c\u003e ALL (ARRAY[\u0027REFUND\u0027::text, \u0027ROLLBACK\u0027::text])) OR (reference_transaction_id IS NOT NULL)))",
+                                          "columnName":  "kind"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_processed_win_reference_check",
+                                          "expression":  "(status \u003c\u003e \u0027PROCESSED\u0027::text) OR (kind \u003c\u003e \u0027WIN\u0027::text) OR (reference_external_transaction_id IS NULL) OR (reference_transaction_id IS NOT NULL)",
+                                          "definition":  "CHECK (((status \u003c\u003e \u0027PROCESSED\u0027::text) OR (kind \u003c\u003e \u0027WIN\u0027::text) OR (reference_external_transaction_id IS NULL) OR (reference_transaction_id IS NOT NULL)))",
+                                          "columnName":  "kind"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_provider_fields_check",
+                                          "expression":  "((kind = \u0027OPENING\u0027::text) AND (provider_id IS NULL) AND (external_transaction_id IS NULL) AND (idempotency_key IS NULL) AND (payload_hash IS NULL) AND (round_id IS NULL) AND (game_id IS NULL) AND (status = \u0027PROCESSED\u0027::text)) OR ((kind \u003c\u003e \u0027OPENING\u0027::text) AND (provider_id IS NOT NULL) AND (btrim(provider_id) \u003c\u003e \u0027\u0027::text) AND (external_transaction_id IS NOT NULL) AND (btrim(external_transaction_id) \u003c\u003e \u0027\u0027::text) AND (idempotency_key IS NOT NULL) AND (btrim(idempotency_key) \u003c\u003e \u0027\u0027::text) AND (payload_hash IS NOT NULL) AND (btrim(payload_hash) \u003c\u003e \u0027\u0027::text) AND (round_id IS NOT NULL) AND (btrim(round_id) \u003c\u003e \u0027\u0027::text) AND (game_id IS NOT NULL) AND (btrim(game_id) \u003c\u003e \u0027\u0027::text))",
+                                          "definition":  "CHECK ((((kind = \u0027OPENING\u0027::text) AND (provider_id IS NULL) AND (external_transaction_id IS NULL) AND (idempotency_key IS NULL) AND (payload_hash IS NULL) AND (round_id IS NULL) AND (game_id IS NULL) AND (status = \u0027PROCESSED\u0027::text)) OR ((kind \u003c\u003e \u0027OPENING\u0027::text) AND (provider_id IS NOT NULL) AND (btrim(provider_id) \u003c\u003e \u0027\u0027::text) AND (external_transaction_id IS NOT NULL) AND (btrim(external_transaction_id) \u003c\u003e \u0027\u0027::text) AND (idempotency_key IS NOT NULL) AND (btrim(idempotency_key) \u003c\u003e \u0027\u0027::text) AND (payload_hash IS NOT NULL) AND (btrim(payload_hash) \u003c\u003e \u0027\u0027::text) AND (round_id IS NOT NULL) AND (btrim(round_id) \u003c\u003e \u0027\u0027::text) AND (game_id IS NOT NULL) AND (btrim(game_id) \u003c\u003e \u0027\u0027::text))))",
+                                          "columnName":  "external_transaction_id"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_reference_fields_check",
+                                          "expression":  "((kind = ANY (ARRAY[\u0027REFUND\u0027::text, \u0027ROLLBACK\u0027::text])) AND (reference_external_transaction_id IS NOT NULL) AND (btrim(reference_external_transaction_id) \u003c\u003e \u0027\u0027::text)) OR ((kind = ANY (ARRAY[\u0027BET\u0027::text, \u0027LOSS\u0027::text, \u0027OPENING\u0027::text])) AND (reference_external_transaction_id IS NULL)) OR ((kind = \u0027WIN\u0027::text) AND ((reference_external_transaction_id IS NULL) OR (btrim(reference_external_transaction_id) \u003c\u003e \u0027\u0027::text)))",
+                                          "definition":  "CHECK ((((kind = ANY (ARRAY[\u0027REFUND\u0027::text, \u0027ROLLBACK\u0027::text])) AND (reference_external_transaction_id IS NOT NULL) AND (btrim(reference_external_transaction_id) \u003c\u003e \u0027\u0027::text)) OR ((kind = ANY (ARRAY[\u0027BET\u0027::text, \u0027LOSS\u0027::text, \u0027OPENING\u0027::text])) AND (reference_external_transaction_id IS NULL)) OR ((kind = \u0027WIN\u0027::text) AND ((reference_external_transaction_id IS NULL) OR (btrim(reference_external_transaction_id) \u003c\u003e \u0027\u0027::text)))))",
+                                          "columnName":  "kind"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_result_balance_cents_check",
+                                          "expression":  "result_balance_cents \u003e= 0",
+                                          "definition":  "CHECK ((result_balance_cents \u003e= 0))",
+                                          "columnName":  "result_balance_cents"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_status_check",
+                                          "expression":  "\"status\" in (\u0027PENDING\u0027, \u0027PENDING_REFERENCE\u0027, \u0027PROCESSED\u0027, \u0027REJECTED\u0027, \u0027FAILED\u0027)",
+                                          "definition":  "check (\"status\" in (\u0027PENDING\u0027, \u0027PENDING_REFERENCE\u0027, \u0027PROCESSED\u0027, \u0027REJECTED\u0027, \u0027FAILED\u0027))",
+                                          "columnName":  "status"
+                                      },
+                                      {
+                                          "name":  "wager_transaction_terminal_fields_check",
+                                          "expression":  "((status = ANY (ARRAY[\u0027REJECTED\u0027::text, \u0027FAILED\u0027::text])) = (failure_code IS NOT NULL)) AND ((status = \u0027PROCESSED\u0027::text) = (processed_at IS NOT NULL)) AND ((status = \u0027PROCESSED\u0027::text) = (result_balance_cents IS NOT NULL))",
+                                          "definition":  "CHECK ((((status = ANY (ARRAY[\u0027REJECTED\u0027::text, \u0027FAILED\u0027::text])) = (failure_code IS NOT NULL)) AND ((status = \u0027PROCESSED\u0027::text) = (processed_at IS NOT NULL)) AND ((status = \u0027PROCESSED\u0027::text) = (result_balance_cents IS NOT NULL))))",
+                                          "columnName":  "failure_code"
+                                      }
+                                  ],
+                       "triggers":  [
+
+                                    ],
+                       "foreignKeys":  {
+                                           "wager_transaction_reference_transaction_id_fkey":  {
+                                                                                                   "columnNames":  [
+                                                                                                                       "reference_transaction_id"
+                                                                                                                   ],
+                                                                                                   "constraintName":  "wager_transaction_reference_transaction_id_fkey",
+                                                                                                   "localTableName":  "public.wager_transaction",
+                                                                                                   "referencedColumnNames":  [
+                                                                                                                                 "id"
+                                                                                                                             ],
+                                                                                                   "referencedTableName":  "public.wager_transaction",
+                                                                                                   "deleteRule":  "restrict"
+                                                                                               },
+                                           "wager_transaction_wallet_id_fkey":  {
+                                                                                    "columnNames":  [
+                                                                                                        "wallet_id"
+                                                                                                    ],
+                                                                                    "constraintName":  "wager_transaction_wallet_id_fkey",
+                                                                                    "localTableName":  "public.wager_transaction",
+                                                                                    "referencedColumnNames":  [
+                                                                                                                  "id"
+                                                                                                              ],
+                                                                                    "referencedTableName":  "public.wallet",
+                                                                                    "deleteRule":  "restrict"
+                                                                                }
+                                       },
+                       "comment":  null
+                   },
+                   {
+                       "name":  "wallet",
+                       "schema":  "public",
+                       "columns":  {
+                                       "balance_cents":  {
+                                                             "name":  "balance_cents",
+                                                             "type":  "bigint",
+                                                             "unsigned":  false,
+                                                             "autoincrement":  false,
+                                                             "primary":  false,
+                                                             "nullable":  false,
+                                                             "unique":  false,
+                                                             "length":  null,
+                                                             "precision":  null,
+                                                             "scale":  null,
+                                                             "default":  null,
+                                                             "comment":  null,
+                                                             "collation":  null,
+                                                             "enumItems":  [
+
+                                                                           ],
+                                                             "mappedType":  "bigint"
+                                                         },
+                                       "created_at":  {
+                                                          "name":  "created_at",
+                                                          "type":  "timestamptz(6)",
+                                                          "unsigned":  false,
+                                                          "autoincrement":  false,
+                                                          "primary":  false,
+                                                          "nullable":  false,
+                                                          "unique":  false,
+                                                          "length":  6,
+                                                          "precision":  null,
+                                                          "scale":  null,
+                                                          "default":  null,
+                                                          "comment":  null,
+                                                          "collation":  null,
+                                                          "enumItems":  [
+
+                                                                        ],
+                                                          "mappedType":  "datetime"
+                                                      },
+                                       "currency":  {
+                                                        "name":  "currency",
+                                                        "type":  "varchar(3)",
+                                                        "unsigned":  false,
+                                                        "autoincrement":  false,
+                                                        "primary":  false,
+                                                        "nullable":  false,
+                                                        "unique":  false,
+                                                        "length":  3,
+                                                        "precision":  null,
+                                                        "scale":  null,
+                                                        "default":  null,
+                                                        "comment":  null,
+                                                        "collation":  null,
+                                                        "enumItems":  [
+
+                                                                      ],
+                                                        "mappedType":  "string"
+                                                    },
+                                       "id":  {
+                                                  "name":  "id",
+                                                  "type":  "text",
+                                                  "unsigned":  false,
+                                                  "autoincrement":  false,
+                                                  "primary":  true,
+                                                  "nullable":  false,
+                                                  "unique":  false,
+                                                  "length":  null,
+                                                  "precision":  null,
+                                                  "scale":  null,
+                                                  "default":  null,
+                                                  "comment":  null,
+                                                  "collation":  null,
+                                                  "enumItems":  [
+
+                                                                ],
+                                                  "mappedType":  "text"
+                                              },
+                                       "player_id":  {
+                                                         "name":  "player_id",
+                                                         "type":  "text",
+                                                         "unsigned":  false,
+                                                         "autoincrement":  false,
+                                                         "primary":  false,
+                                                         "nullable":  false,
+                                                         "unique":  true,
+                                                         "length":  null,
+                                                         "precision":  null,
+                                                         "scale":  null,
+                                                         "default":  null,
+                                                         "comment":  null,
+                                                         "collation":  null,
+                                                         "enumItems":  [
+
+                                                                       ],
+                                                         "mappedType":  "text"
+                                                     },
+                                       "updated_at":  {
+                                                          "name":  "updated_at",
+                                                          "type":  "timestamptz(6)",
+                                                          "unsigned":  false,
+                                                          "autoincrement":  false,
+                                                          "primary":  false,
+                                                          "nullable":  false,
+                                                          "unique":  false,
+                                                          "length":  6,
+                                                          "precision":  null,
+                                                          "scale":  null,
+                                                          "default":  null,
+                                                          "comment":  null,
+                                                          "collation":  null,
+                                                          "enumItems":  [
+
+                                                                        ],
+                                                          "mappedType":  "datetime"
+                                                      },
+                                       "version":  {
+                                                       "name":  "version",
+                                                       "type":  "int",
+                                                       "unsigned":  false,
+                                                       "autoincrement":  false,
+                                                       "primary":  false,
+                                                       "nullable":  false,
+                                                       "unique":  false,
+                                                       "length":  null,
+                                                       "precision":  null,
+                                                       "scale":  null,
+                                                       "default":  null,
+                                                       "comment":  null,
+                                                       "collation":  null,
+                                                       "enumItems":  [
+
+                                                                     ],
+                                                       "mappedType":  "integer"
+                                                   }
+                                   },
+                       "indexes":  [
+                                       {
+                                           "columnNames":  [
+                                                               "id"
+                                                           ],
+                                           "composite":  false,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_pkey",
+                                           "primary":  true,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "id"
+                                                           ],
+                                           "composite":  false,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_pkey",
+                                           "primary":  true,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "player_id",
+                                                               "currency"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_player_currency_unique",
+                                           "primary":  false,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "player_id",
+                                                               "currency"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_player_currency_unique",
+                                           "primary":  false,
+                                           "unique":  true
+                                       }
+                                   ],
+                       "checks":  [
+                                      {
+                                          "name":  "wallet_balance_cents_check",
+                                          "expression":  "balance_cents \u003e= 0",
+                                          "definition":  "CHECK ((balance_cents \u003e= 0))",
+                                          "columnName":  "balance_cents"
+                                      },
+                                      {
+                                          "name":  "wallet_currency_check",
+                                          "expression":  "currency ~ \u0027^[A-Z]{3}$\u0027::text",
+                                          "definition":  "CHECK (((currency)::text ~ \u0027^[A-Z]{3}$\u0027::text))",
+                                          "columnName":  "currency"
+                                      },
+                                      {
+                                          "name":  "wallet_id_check",
+                                          "expression":  "btrim(id) \u003c\u003e \u0027\u0027::text",
+                                          "definition":  "CHECK ((btrim(id) \u003c\u003e \u0027\u0027::text))",
+                                          "columnName":  "id"
+                                      },
+                                      {
+                                          "name":  "wallet_player_id_check",
+                                          "expression":  "btrim(player_id) \u003c\u003e \u0027\u0027::text",
+                                          "definition":  "CHECK ((btrim(player_id) \u003c\u003e \u0027\u0027::text))",
+                                          "columnName":  "player_id"
+                                      },
+                                      {
+                                          "name":  "wallet_version_check",
+                                          "expression":  "version \u003e= 1",
+                                          "definition":  "CHECK ((version \u003e= 1))",
+                                          "columnName":  "version"
+                                      }
+                                  ],
+                       "triggers":  [
+
+                                    ],
+                       "foreignKeys":  {
+
+                                       },
+                       "comment":  null
+                   },
+                   {
+                       "name":  "wallet_ledger_entry",
+                       "schema":  "public",
+                       "columns":  {
+                                       "amount_cents":  {
+                                                            "name":  "amount_cents",
+                                                            "type":  "bigint",
+                                                            "unsigned":  false,
+                                                            "autoincrement":  false,
+                                                            "primary":  false,
+                                                            "nullable":  false,
+                                                            "unique":  false,
+                                                            "length":  null,
+                                                            "precision":  null,
+                                                            "scale":  null,
+                                                            "default":  null,
+                                                            "comment":  null,
+                                                            "collation":  null,
+                                                            "enumItems":  [
+
+                                                                          ],
+                                                            "mappedType":  "bigint"
+                                                        },
+                                       "balance_after_cents":  {
+                                                                   "name":  "balance_after_cents",
+                                                                   "type":  "bigint",
+                                                                   "unsigned":  false,
+                                                                   "autoincrement":  false,
+                                                                   "primary":  false,
+                                                                   "nullable":  false,
+                                                                   "unique":  false,
+                                                                   "length":  null,
+                                                                   "precision":  null,
+                                                                   "scale":  null,
+                                                                   "default":  null,
+                                                                   "comment":  null,
+                                                                   "collation":  null,
+                                                                   "enumItems":  [
+
+                                                                                 ],
+                                                                   "mappedType":  "bigint"
+                                                               },
+                                       "balance_before_cents":  {
+                                                                    "name":  "balance_before_cents",
+                                                                    "type":  "bigint",
+                                                                    "unsigned":  false,
+                                                                    "autoincrement":  false,
+                                                                    "primary":  false,
+                                                                    "nullable":  false,
+                                                                    "unique":  false,
+                                                                    "length":  null,
+                                                                    "precision":  null,
+                                                                    "scale":  null,
+                                                                    "default":  null,
+                                                                    "comment":  null,
+                                                                    "collation":  null,
+                                                                    "enumItems":  [
+
+                                                                                  ],
+                                                                    "mappedType":  "bigint"
+                                                                },
+                                       "created_at":  {
+                                                          "name":  "created_at",
+                                                          "type":  "timestamptz(6)",
+                                                          "unsigned":  false,
+                                                          "autoincrement":  false,
+                                                          "primary":  false,
+                                                          "nullable":  false,
+                                                          "unique":  false,
+                                                          "length":  6,
+                                                          "precision":  null,
+                                                          "scale":  null,
+                                                          "default":  null,
+                                                          "comment":  null,
+                                                          "collation":  null,
+                                                          "enumItems":  [
+
+                                                                        ],
+                                                          "mappedType":  "datetime"
+                                                      },
+                                       "direction":  {
+                                                         "name":  "direction",
+                                                         "type":  "text",
+                                                         "unsigned":  false,
+                                                         "autoincrement":  false,
+                                                         "primary":  false,
+                                                         "nullable":  false,
+                                                         "unique":  false,
+                                                         "length":  null,
+                                                         "precision":  null,
+                                                         "scale":  null,
+                                                         "default":  null,
+                                                         "comment":  null,
+                                                         "collation":  null,
+                                                         "enumItems":  [
+                                                                           "DEBIT",
+                                                                           "CREDIT"
+                                                                       ],
+                                                         "mappedType":  "enum"
+                                                     },
+                                       "id":  {
+                                                  "name":  "id",
+                                                  "type":  "text",
+                                                  "unsigned":  false,
+                                                  "autoincrement":  false,
+                                                  "primary":  true,
+                                                  "nullable":  false,
+                                                  "unique":  false,
+                                                  "length":  null,
+                                                  "precision":  null,
+                                                  "scale":  null,
+                                                  "default":  null,
+                                                  "comment":  null,
+                                                  "collation":  null,
+                                                  "enumItems":  [
+
+                                                                ],
+                                                  "mappedType":  "text"
+                                              },
+                                       "transaction_id":  {
+                                                              "name":  "transaction_id",
+                                                              "type":  "text",
+                                                              "unsigned":  false,
+                                                              "autoincrement":  false,
+                                                              "primary":  false,
+                                                              "nullable":  false,
+                                                              "unique":  false,
+                                                              "length":  null,
+                                                              "precision":  null,
+                                                              "scale":  null,
+                                                              "default":  null,
+                                                              "comment":  null,
+                                                              "collation":  null,
+                                                              "enumItems":  [
+
+                                                                            ],
+                                                              "mappedType":  "text"
+                                                          },
+                                       "wallet_id":  {
+                                                         "name":  "wallet_id",
+                                                         "type":  "text",
+                                                         "unsigned":  false,
+                                                         "autoincrement":  false,
+                                                         "primary":  false,
+                                                         "nullable":  false,
+                                                         "unique":  true,
+                                                         "length":  null,
+                                                         "precision":  null,
+                                                         "scale":  null,
+                                                         "default":  null,
+                                                         "comment":  null,
+                                                         "collation":  null,
+                                                         "enumItems":  [
+
+                                                                       ],
+                                                         "mappedType":  "text"
+                                                     }
+                                   },
+                       "indexes":  [
+                                       {
+                                           "columnNames":  [
+                                                               "id"
+                                                           ],
+                                           "composite":  false,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_ledger_entry_pkey",
+                                           "primary":  true,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "id"
+                                                           ],
+                                           "composite":  false,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_ledger_entry_pkey",
+                                           "primary":  true,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "wallet_id",
+                                                               "transaction_id"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_ledger_entry_transaction_unique",
+                                           "primary":  false,
+                                           "unique":  true
+                                       },
+                                       {
+                                           "columnNames":  [
+                                                               "wallet_id",
+                                                               "transaction_id"
+                                                           ],
+                                           "composite":  true,
+                                           "constraint":  true,
+                                           "keyName":  "wallet_ledger_entry_transaction_unique",
+                                           "primary":  false,
+                                           "unique":  true
+                                       }
+                                   ],
+                       "checks":  [
+                                      {
+                                          "name":  "wallet_ledger_entry_amount_cents_check",
+                                          "expression":  "amount_cents \u003e 0",
+                                          "definition":  "CHECK ((amount_cents \u003e 0))",
+                                          "columnName":  "amount_cents"
+                                      },
+                                      {
+                                          "name":  "wallet_ledger_entry_balance_after_cents_check",
+                                          "expression":  "balance_after_cents \u003e= 0",
+                                          "definition":  "CHECK ((balance_after_cents \u003e= 0))",
+                                          "columnName":  "balance_after_cents"
+                                      },
+                                      {
+                                          "name":  "wallet_ledger_entry_balance_before_cents_check",
+                                          "expression":  "balance_before_cents \u003e= 0",
+                                          "definition":  "CHECK ((balance_before_cents \u003e= 0))",
+                                          "columnName":  "balance_before_cents"
+                                      },
+                                      {
+                                          "name":  "wallet_ledger_entry_balance_matches_direction",
+                                          "expression":  "((direction = \u0027CREDIT\u0027::text) AND (balance_after_cents = (balance_before_cents + amount_cents))) OR ((direction = \u0027DEBIT\u0027::text) AND (balance_after_cents = (balance_before_cents - amount_cents)))",
+                                          "definition":  "CHECK ((((direction = \u0027CREDIT\u0027::text) AND (balance_after_cents = (balance_before_cents + amount_cents))) OR ((direction = \u0027DEBIT\u0027::text) AND (balance_after_cents = (balance_before_cents - amount_cents)))))",
+                                          "columnName":  "amount_cents"
+                                      },
+                                      {
+                                          "name":  "wallet_ledger_entry_direction_check",
+                                          "expression":  "\"direction\" in (\u0027DEBIT\u0027, \u0027CREDIT\u0027)",
+                                          "definition":  "check (\"direction\" in (\u0027DEBIT\u0027, \u0027CREDIT\u0027))",
+                                          "columnName":  "direction"
+                                      },
+                                      {
+                                          "name":  "wallet_ledger_entry_id_check",
+                                          "expression":  "btrim(id) \u003c\u003e \u0027\u0027::text",
+                                          "definition":  "CHECK ((btrim(id) \u003c\u003e \u0027\u0027::text))",
+                                          "columnName":  "id"
+                                      },
+                                      {
+                                          "name":  "wallet_ledger_entry_transaction_id_check",
+                                          "expression":  "btrim(transaction_id) \u003c\u003e \u0027\u0027::text",
+                                          "definition":  "CHECK ((btrim(transaction_id) \u003c\u003e \u0027\u0027::text))",
+                                          "columnName":  "transaction_id"
+                                      }
+                                  ],
+                       "triggers":  [
+                                        {
+                                            "name":  "wallet_ledger_entry_immutable",
+                                            "timing":  "before",
+                                            "events":  [
+                                                           "delete",
+                                                           "update"
+                                                       ],
+                                            "forEach":  "row",
+                                            "body":  ""
+                                        }
+                                    ],
+                       "foreignKeys":  {
+                                           "wallet_ledger_entry_transaction_fk":  {
+                                                                                      "columnNames":  [
+                                                                                                          "transaction_id"
+                                                                                                      ],
+                                                                                      "constraintName":  "wallet_ledger_entry_transaction_fk",
+                                                                                      "localTableName":  "public.wallet_ledger_entry",
+                                                                                      "referencedColumnNames":  [
+                                                                                                                    "id"
+                                                                                                                ],
+                                                                                      "referencedTableName":  "public.wager_transaction",
+                                                                                      "deleteRule":  "restrict"
+                                                                                  },
+                                           "wallet_ledger_entry_wallet_id_fkey":  {
+                                                                                      "columnNames":  [
+                                                                                                          "wallet_id"
+                                                                                                      ],
+                                                                                      "constraintName":  "wallet_ledger_entry_wallet_id_fkey",
+                                                                                      "localTableName":  "public.wallet_ledger_entry",
+                                                                                      "referencedColumnNames":  [
+                                                                                                                    "id"
+                                                                                                                ],
+                                                                                      "referencedTableName":  "public.wallet",
+                                                                                      "deleteRule":  "restrict"
+                                                                                  }
+                                       },
+                       "comment":  null
+                   }
+               ],
+    "views":  [
+
+              ],
+    "nativeEnums":  {
+
+                    }
 }
