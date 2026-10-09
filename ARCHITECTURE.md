@@ -24,6 +24,8 @@ O próprio banco também impedirá criar mais de uma wallet para o mesmo jogador
 
 As transações serão guardadas em uma tabela própria. A chave de idempotência e o ID externo serão únicos dentro de cada provedor, para que provedores diferentes possam usar os mesmos valores sem conflito. As operações internas `OPENING` não terão dados de provedor. Cada transação terá seu saldo resultante registrado quando for processada; assim, uma repetição pode devolver o saldo daquela operação, mesmo que a wallet já tenha mudado depois. O ledger só aceitará lançamentos ligados a uma transação existente. Quando uma referência for resolvida, o banco também verificará que a transação referenciada pertence ao mesmo provedor, jogador, wallet, moeda e rodada.
 
+`WalletRepository` abre e busca wallets no PostgreSQL. Ao abrir uma wallet com saldo positivo, grava a wallet, a transação interna `OPENING` e seu lançamento de crédito na mesma transação do banco. Com saldo zero, grava somente a wallet. Ao carregar uma wallet, converte os centavos do PostgreSQL de volta para `Money` sem passar por números de ponto flutuante.
+
 ### Como o dinheiro é representado
 
 As entradas e saídas usam strings decimais com duas casas, por exemplo `"25.00"`. Dentro do domínio, `Money` guarda o valor como centavos em `bigint`. Assim, uma soma ou subtração não depende de ponto flutuante e não sofre erros de arredondamento.
@@ -38,7 +40,7 @@ O ledger é o histórico das movimentações de uma wallet. Cada débito ou cré
 
 `WalletLedgerEntry` verifica essa conta ao ser criado e não pode ser alterado depois. A wallet atualiza o saldo somente depois que o lançamento correspondente foi criado.
 
-O README exige que um saldo inicial positivo gere uma transação interna `OPENING` e um lançamento `CREDIT` correspondente no ledger. `Wallet.open` retorna a wallet e o lançamento, usando os IDs da transação e do lançamento fornecidos por quem a chama. A entidade `WagerTransaction` já representa os tipos e estados da transação, mas a abertura da wallet ainda não cria essa entidade. Com saldo zero, não há lançamento de abertura.
+O README exige que um saldo inicial positivo gere uma transação interna `OPENING` e um lançamento `CREDIT` correspondente no ledger. `Wallet.open` retorna a wallet e o lançamento, usando os IDs da transação e do lançamento fornecidos por quem a chama. `WalletRepository` persiste os três registros juntos. Com saldo zero, não há transação nem lançamento de abertura.
 
 As datas são copiadas ao entrar e sair dos objetos, para que uma alteração feita por quem usa o objeto não modifique a data registrada.
 
