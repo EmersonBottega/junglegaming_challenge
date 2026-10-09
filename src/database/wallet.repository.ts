@@ -70,8 +70,7 @@ export class WalletRepository {
     const balanceCents = moneyToCents(wallet.balance);
 
     await this.entityManager.transactional(async (em) => {
-      const connection = em.getConnection();
-      await connection.execute(
+      await em.execute(
         `INSERT INTO ${this.schema}.wallet
           (id, player_id, currency, balance_cents, version, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -90,7 +89,7 @@ export class WalletRepository {
         return;
       }
 
-      await connection.execute(
+      await em.execute(
         `INSERT INTO ${this.schema}.wager_transaction
           (id, wallet_id, player_id, kind, amount_cents, currency, status,
            result_balance_cents, created_at, processed_at)
@@ -107,7 +106,7 @@ export class WalletRepository {
         ],
       );
 
-      await connection.execute(
+      await em.execute(
         `INSERT INTO ${this.schema}.wallet_ledger_entry
           (id, wallet_id, transaction_id, direction, amount_cents,
            balance_before_cents, balance_after_cents, created_at)
@@ -129,10 +128,47 @@ export class WalletRepository {
   }
 
   async findById(id: string): Promise<Wallet | undefined> {
-    const [row] = await this.entityManager.getConnection().execute<WalletRow[]>(
+    return this.findOneById(id);
+  }
+
+  async findByIdForUpdate(
+    id: string,
+    entityManager: EntityManager,
+  ): Promise<Wallet | undefined> {
+    return this.findOneById(id, entityManager, true);
+  }
+
+  async persistBalance(
+    wallet: Wallet,
+    entityManager: EntityManager,
+  ): Promise<void> {
+    const [updated] = await entityManager.execute<{ id: string }[]>(
+      `UPDATE ${this.schema}.wallet
+       SET balance_cents = ?, version = ?, updated_at = ?
+       WHERE id = ?
+       RETURNING id`,
+      [
+        moneyToCents(wallet.balance),
+        wallet.version,
+        wallet.updatedAt,
+        wallet.id,
+      ],
+    );
+
+    if (!updated) {
+      throw new Error(`Wallet ${wallet.id} was not found while saving its balance`);
+    }
+  }
+
+  private async findOneById(
+    id: string,
+    entityManager: EntityManager = this.entityManager,
+    forUpdate = false,
+  ): Promise<Wallet | undefined> {
+    const [row] = await entityManager.execute<WalletRow[]>(
       `SELECT id, player_id, currency, balance_cents, version, created_at, updated_at
        FROM ${this.schema}.wallet
-       WHERE id = ?`,
+       WHERE id = ?${forUpdate ? " FOR UPDATE" : ""}`,
       [id],
     );
 

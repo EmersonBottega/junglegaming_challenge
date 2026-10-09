@@ -28,6 +28,8 @@ As transações serão guardadas em uma tabela própria. A chave de idempotênci
 
 `WagerTransactionRepository` grava e busca transações de provedores por ID interno, chave de idempotência ou ID externo. Ao salvar uma transação processada, também registra o saldo resultante daquela operação para que o chamador possa devolver a resposta original em um reenvio. O repositório aceita o `EntityManager` da transação chamadora nas operações de escrita, permitindo que a camada de aplicação coordene a transação da aposta com a wallet e o ledger.
 
+`ProcessPersistedBet` processa uma aposta dentro de uma transação PostgreSQL: primeiro serializa apenas chamadas com a mesma chave de idempotência, depois bloqueia a linha da wallet e grava a transação, o novo saldo e o lançamento no ledger juntos. A chave de idempotência é bloqueada para tratar reenvios simultâneos mesmo que apontem para wallets diferentes; a wallet é bloqueada para proteger seu saldo contra apostas concorrentes. Uma falha ao gravar qualquer parte desfaz todas as alterações. Se a chave já existe com outro payload, o resultado é conflito; se o saldo não basta, a transação é rejeitada sem lançamento.
+
 ### Como o dinheiro é representado
 
 As entradas e saídas usam strings decimais com duas casas, por exemplo `"25.00"`. Dentro do domínio, `Money` guarda o valor como centavos em `bigint`. Assim, uma soma ou subtração não depende de ponto flutuante e não sofre erros de arredondamento.

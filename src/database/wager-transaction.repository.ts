@@ -112,7 +112,7 @@ export class WagerTransactionRepository {
       throw new Error("A new transaction cannot contain resolved or terminal state");
     }
 
-    await entityManager.getConnection().execute(
+    await entityManager.execute(
       `INSERT INTO ${this.schema}.wager_transaction
         (id, provider_id, external_transaction_id, idempotency_key, payload_hash,
          wallet_id, player_id, round_id, game_id, kind, amount_cents, currency,
@@ -146,7 +146,7 @@ export class WagerTransactionRepository {
       throw new Error("Only processed transactions can persist a resulting wallet balance");
     }
 
-    const [updated] = await entityManager.getConnection().execute<{ id: string }[]>(
+    const [updated] = await entityManager.execute<{ id: string }[]>(
       `WITH updated AS (
          UPDATE ${this.schema}.wager_transaction
          SET reference_transaction_id = ?,
@@ -209,7 +209,7 @@ export class WagerTransactionRepository {
     parameters: unknown[],
     entityManager: EntityManager,
   ): Promise<PersistedWagerTransaction | undefined> {
-    const [row] = await entityManager.getConnection().execute<WagerTransactionRow[]>(
+    const [row] = await entityManager.execute<WagerTransactionRow[]>(
       `SELECT id, provider_id, external_transaction_id, idempotency_key, payload_hash,
               wallet_id, player_id, round_id, game_id, kind, amount_cents, currency,
               reference_external_transaction_id, reference_transaction_id, status,
