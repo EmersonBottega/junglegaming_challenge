@@ -204,10 +204,39 @@ export class WagerTransactionRepository {
     );
   }
 
+  async findByExternalTransactionIdForUpdate(
+    providerId: string,
+    externalTransactionId: string,
+    entityManager: EntityManager,
+  ): Promise<PersistedWagerTransaction | undefined> {
+    return this.findOne(
+      "provider_id = ? AND external_transaction_id = ?",
+      [providerId, externalTransactionId],
+      entityManager,
+      true,
+    );
+  }
+
+  async hasReversal(
+    referenceTransactionId: string,
+    kind: WagerTransactionKind.Refund | WagerTransactionKind.Rollback,
+    entityManager: EntityManager,
+  ): Promise<boolean> {
+    const rows = await entityManager.execute<{ id: string }[]>(
+      `SELECT id
+       FROM ${this.schema}.wager_transaction
+       WHERE reference_transaction_id = ? AND kind = ?
+       LIMIT 1`,
+      [referenceTransactionId, kind],
+    );
+    return rows.length > 0;
+  }
+
   private async findOne(
     predicate: string,
     parameters: unknown[],
     entityManager: EntityManager,
+    forUpdate = false,
   ): Promise<PersistedWagerTransaction | undefined> {
     const [row] = await entityManager.execute<WagerTransactionRow[]>(
       `SELECT id, provider_id, external_transaction_id, idempotency_key, payload_hash,
@@ -215,7 +244,7 @@ export class WagerTransactionRepository {
               reference_external_transaction_id, reference_transaction_id, status,
               failure_code, result_balance_cents, created_at, processed_at
        FROM ${this.schema}.wager_transaction
-       WHERE ${predicate}`,
+       WHERE ${predicate}${forUpdate ? " FOR UPDATE" : ""}`,
       parameters,
     );
 

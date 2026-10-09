@@ -14,6 +14,7 @@ export interface ProcessRefundProps {
   ledgerEntryId: string;
   processedAt: Date;
   reference?: WagerTransaction;
+  alreadyReversed?: boolean;
 }
 
 export type ProcessRefundResult =
@@ -28,7 +29,7 @@ export type ProcessRefundResult =
     }
   | {
       status: WagerTransactionStatus.Rejected;
-      failureCode: FailureCode.InvalidReference;
+      failureCode: FailureCode.InvalidReference | FailureCode.DuplicateReversal;
     };
 
 export class ProcessRefundError extends Error {
@@ -42,7 +43,14 @@ export class ProcessRefundError extends Error {
 }
 
 export function processRefund(props: ProcessRefundProps): ProcessRefundResult {
-  const { transaction, wallet, ledgerEntryId, processedAt, reference } = props;
+  const {
+    transaction,
+    wallet,
+    ledgerEntryId,
+    processedAt,
+    reference,
+    alreadyReversed = false,
+  } = props;
 
   if (transaction.kind !== WagerTransactionKind.Refund) {
     throw new ProcessRefundError("Only REFUND transactions can be processed by this use case", "INVALID_KIND");
@@ -100,6 +108,14 @@ export function processRefund(props: ProcessRefundProps): ProcessRefundResult {
     return {
       status: WagerTransactionStatus.PendingReference,
       balance: wallet.balance,
+    };
+  }
+
+  if (alreadyReversed) {
+    transaction.reject(FailureCode.DuplicateReversal);
+    return {
+      status: WagerTransactionStatus.Rejected,
+      failureCode: FailureCode.DuplicateReversal,
     };
   }
 

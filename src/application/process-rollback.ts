@@ -14,6 +14,7 @@ export interface ProcessRollbackProps {
   ledgerEntryId: string;
   processedAt: Date;
   reference?: WagerTransaction;
+  alreadyReversed?: boolean;
 }
 
 export type ProcessRollbackResult =
@@ -28,7 +29,10 @@ export type ProcessRollbackResult =
     }
   | {
       status: WagerTransactionStatus.Rejected;
-      failureCode: FailureCode.InvalidReference | FailureCode.ReversalWouldOverdraw;
+      failureCode:
+        | FailureCode.InvalidReference
+        | FailureCode.DuplicateReversal
+        | FailureCode.ReversalWouldOverdraw;
     };
 
 export class ProcessRollbackError extends Error {
@@ -42,7 +46,14 @@ export class ProcessRollbackError extends Error {
 }
 
 export function processRollback(props: ProcessRollbackProps): ProcessRollbackResult {
-  const { transaction, wallet, ledgerEntryId, processedAt, reference } = props;
+  const {
+    transaction,
+    wallet,
+    ledgerEntryId,
+    processedAt,
+    reference,
+    alreadyReversed = false,
+  } = props;
 
   if (transaction.kind !== WagerTransactionKind.Rollback) {
     throw new ProcessRollbackError(
@@ -112,6 +123,14 @@ export function processRollback(props: ProcessRollbackProps): ProcessRollbackRes
     return {
       status: WagerTransactionStatus.PendingReference,
       balance: wallet.balance,
+    };
+  }
+
+  if (alreadyReversed) {
+    transaction.reject(FailureCode.DuplicateReversal);
+    return {
+      status: WagerTransactionStatus.Rejected,
+      failureCode: FailureCode.DuplicateReversal,
     };
   }
 
