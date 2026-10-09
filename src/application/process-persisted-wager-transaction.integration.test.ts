@@ -13,6 +13,9 @@ import { WagerTransactionRepository } from "../database/wager-transaction.reposi
 import { OutboxRepository } from "../database/outbox.repository";
 import { createMikroOrmConfig } from "../database/mikro-orm.config";
 import { ProcessPersistedWagerTransaction } from "./process-persisted-wager-transaction";
+import { WagerTransactionRequest } from "./wager-transaction-request";
+import { ReferenceRetryWorker } from "./reference-retry-worker";
+import { ApplicationMetrics } from "../observability/metrics";
 import type { IntegrationEvent } from "../domain/integration-event";
 import type { EntityManager } from "@mikro-orm/postgresql";
 
@@ -21,7 +24,9 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
   let schema: string;
   let wallets: WalletRepository;
   let transactions: WagerTransactionRepository;
+  let outbox: OutboxRepository;
   let processor: ProcessPersistedWagerTransaction;
+  const additionalOrms: MikroORM[] = [];
 
   beforeAll(async () => {
     schema = `persisted_wager_test_${crypto.randomUUID().replaceAll("-", "")}`;
@@ -40,17 +45,19 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
 
     wallets = new WalletRepository(orm.em);
     transactions = new WagerTransactionRepository(orm.em);
+    outbox = new OutboxRepository(orm.em);
     processor = new ProcessPersistedWagerTransaction(
       orm.em,
       wallets,
       transactions,
       new WalletLedgerRepository(orm.em),
-      new OutboxRepository(orm.em),
+      outbox,
     );
   });
 
   afterAll(async () => {
     try {
+      await Promise.all(additionalOrms.map((instance) => instance.close(true)));
       await orm.migrator.down({ schema });
       await orm.em.getConnection().execute(`DROP SCHEMA "${schema}" CASCADE`);
     } finally {
@@ -101,6 +108,117 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect(await countTransactions(wallet.id)).toBe(1);
     expect(await countOutboxEvents(wallet.id, "WagerTransactionProcessed")).toBe(2);
     expect(await countOutboxEvents(wallet.id, "WalletBalanceChanged")).toBe(2);
+  });
+
+  test("keeps one idempotent result across three independent PostgreSQL instances", async () => {
+    const wallet = await createWallet("100.00");
+    const original = createBet(wallet.id, "25.00");
+    const config = createMikroOrmConfig();
+    const otherProcessors = await Promise.all([1, 2].map(async () => {
+      const instance = new MikroORM({ ...config, schema });
+      await instance.connect();
+      additionalOrms.push(instance);
+      const outbox = new OutboxRepository(instance.em);
+      return new ProcessPersistedWagerTransaction(
+        instance.em,
+        new WalletRepository(instance.em, outbox),
+        new WagerTransactionRepository(instance.em),
+        new WalletLedgerRepository(instance.em),
+        outbox,
+      );
+    }));
+    const processors = [processor, ...otherProcessors];
+    const results = await Promise.all(
+      Array.from({ length: 50 }, (_, index) =>
+        processors[index % processors.length].execute({
+          transaction: cloneTransaction(original),
+          ledgerEntryId: crypto.randomUUID(),
+          processedAt: new Date(),
+        }),
+      ),
+    );
+
+    expect(results.filter((result) => result.idempotentReplay === false)).toHaveLength(1);
+    expect(results.filter((result) => result.idempotentReplay === true)).toHaveLength(49);
+    expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("75.00");
+    expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
+    expect(await countTransactions(wallet.id)).toBe(1);
+  });
+
+  test("processes different wallets in parallel without crossing their balances", async () => {
+    const openedWallets = await Promise.all(
+      Array.from({ length: 12 }, () => createWallet("50.00")),
+    );
+    const results = await Promise.all(openedWallets.map((wallet) => {
+      const bet = createBet(wallet.id, "1.00");
+      return processor.execute({
+        transaction: bet,
+        ledgerEntryId: crypto.randomUUID(),
+        processedAt: new Date(),
+      });
+    }));
+
+    expect(results.every((result) => result.status === WagerTransactionStatus.Processed)).toBe(true);
+    const balances = await Promise.all(
+      openedWallets.map(async (wallet) => (await wallets.findById(wallet.id))?.balance.toString()),
+    );
+    expect(balances).toEqual(Array(12).fill("49.00"));
+    for (const wallet of openedWallets) {
+      expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
+    }
+  });
+
+  test("preserves wallet-ledger consistency when a fresh service instance reads persisted state", async () => {
+    const wallet = await createWallet("100.00");
+    const bet = createBet(wallet.id, "35.00");
+    await process(bet);
+
+    const restartedOrm = new MikroORM({
+      ...createMikroOrmConfig(),
+      schema,
+    });
+    await restartedOrm.connect();
+    additionalOrms.push(restartedOrm);
+    const restartedWallets = new WalletRepository(restartedOrm.em);
+    const restartedLedger = new WalletLedgerRepository(restartedOrm.em);
+    const loadedWallet = await restartedWallets.findById(wallet.id);
+    expect(loadedWallet?.balance.toString()).toBe("65.00");
+    const reconciliation = await restartedLedger.reconcile(wallet.id, loadedWallet!.balance);
+    expect(reconciliation.consistent).toBe(true);
+    expect(reconciliation.calculatedBalance.toString()).toBe("65.00");
+  });
+
+  test("recovers an outbox lease left behind by a stopped publisher", async () => {
+    await orm.em.getConnection().execute(
+      `UPDATE "${schema}".outbox_message
+       SET published_at = now(), lease_owner = NULL, lease_expires_at = NULL`,
+    );
+    const wallet = await createWallet("1.00");
+    const [firstClaim] = await orm.em.transactional((em) =>
+      outbox.claimDue("publisher-before-stop", 1, 60, em),
+    );
+    expect(firstClaim).toBeDefined();
+    await orm.em.getConnection().execute(
+      `UPDATE "${schema}".outbox_message
+       SET lease_expires_at = now() - interval '1 second'
+       WHERE id = ?`,
+      [firstClaim.id],
+    );
+    const [recoveredClaim] = await orm.em.transactional((em) =>
+      outbox.claimDue("publisher-after-restart", 1, 60, em),
+    );
+
+    expect(recoveredClaim.id).toBe(firstClaim.id);
+    await orm.em.transactional((em) =>
+      outbox.markPublished(recoveredClaim.id, "publisher-after-restart", em),
+    );
+    const [remaining] = await orm.em.getConnection().execute(
+      `SELECT count(*)::text AS count
+       FROM "${schema}".outbox_message
+       WHERE aggregate_id = ? AND published_at IS NULL`,
+      [wallet.id],
+    );
+    expect(remaining.count).toBe("1");
   });
 
   test("returns an idempotency conflict when the same key has a different payload", async () => {
@@ -345,6 +463,64 @@ describe("ProcessPersistedWagerTransaction with PostgreSQL", () => {
     expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("10.00");
     expect(await countKind(wallet.id, WagerTransactionKind.Rollback)).toBe(1);
     expect(await countLedger(wallet.id, "DEBIT")).toBe(1);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionRejected")).toBe(1);
+  });
+
+  test("retries a missing reference and eventually rejects it with an integration event", async () => {
+    const wallet = await createWallet("100.00");
+    const metrics = new ApplicationMetrics();
+    const requests = new WagerTransactionRequest(processor, metrics);
+    const worker = new ReferenceRetryWorker(transactions, requests, processor, metrics);
+    const request = {
+      providerId: "provider-reference-retry",
+      externalTransactionId: "refund-pending",
+      idempotencyKey: "refund-pending-key",
+      playerId: `player-${wallet.id}`,
+      walletId: wallet.id,
+      roundId: "round-reference",
+      gameId: "game-reference",
+      kind: WagerTransactionKind.Refund,
+      money: { amount: "10.00", currency: "BRL" },
+      referenceExternalTransactionId: "bet-not-yet-seen",
+    };
+
+    const initial = await requests.submit(request);
+    expect(initial.status).toBe(WagerTransactionStatus.PendingReference);
+    await orm.em.getConnection().execute(
+      `UPDATE "${schema}".wager_transaction
+       SET reference_next_attempt_at = now() - interval '1 second',
+           reference_expires_at = now() + interval '1 hour'
+       WHERE provider_id = ? AND idempotency_key = ?`,
+      [request.providerId, request.idempotencyKey],
+    );
+
+    const retryCounts = await Promise.all([
+      worker.processDueBatch(),
+      worker.processDueBatch(),
+    ]);
+    expect(retryCounts[0] + retryCounts[1]).toBe(1);
+    const pending = await transactions.findById(initial.transactionId);
+    expect(pending?.transaction.status).toBe(WagerTransactionStatus.PendingReference);
+    const [retryRow] = await orm.em.getConnection().execute(
+      `SELECT reference_attempts FROM "${schema}".wager_transaction WHERE id = ?`,
+      [initial.transactionId],
+    );
+    expect(retryRow.reference_attempts).toBe(2);
+    expect(await countOutboxEvents(wallet.id, "WagerTransactionPendingReference")).toBe(1);
+    expect((await wallets.findById(wallet.id))?.balance.toString()).toBe("100.00");
+
+    await orm.em.getConnection().execute(
+      `UPDATE "${schema}".wager_transaction
+       SET reference_attempts = 12,
+           reference_next_attempt_at = now() - interval '1 second',
+           reference_expires_at = now() - interval '1 second'
+       WHERE id = ?`,
+      [initial.transactionId],
+    );
+    expect(await worker.processDueBatch()).toBe(1);
+    const rejected = await transactions.findById(initial.transactionId);
+    expect(rejected?.transaction.status).toBe(WagerTransactionStatus.Rejected);
+    expect(rejected?.transaction.failureCode).toBe(FailureCode.ReferenceNotFound);
     expect(await countOutboxEvents(wallet.id, "WagerTransactionRejected")).toBe(1);
   });
 

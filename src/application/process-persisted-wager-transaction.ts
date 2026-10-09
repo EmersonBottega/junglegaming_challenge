@@ -23,6 +23,7 @@ import { WalletRepository } from "../database/wallet.repository";
 import { WalletLedgerRepository } from "../database/wallet-ledger.repository";
 import { OutboxRepository } from "../database/outbox.repository";
 import { WagerTransactionRepository } from "../database/wager-transaction.repository";
+import { ApplicationMetrics } from "../observability/metrics";
 
 export type PersistedWagerTransactionResult =
   | {
@@ -72,6 +73,7 @@ export class ProcessPersistedWagerTransaction {
     private readonly transactions: WagerTransactionRepository,
     private readonly ledger: WalletLedgerRepository,
     private readonly outbox: OutboxRepository,
+    private readonly metrics?: ApplicationMetrics,
   ) {}
 
   async execute(props: {
@@ -79,17 +81,19 @@ export class ProcessPersistedWagerTransaction {
     ledgerEntryId: string;
     processedAt: Date;
     correlationId?: string;
-  }): Promise<PersistedWagerTransactionResult> {
+  }, transactionManager?: EntityManager): Promise<PersistedWagerTransactionResult> {
     const { transaction: requestedTransaction } = props;
 
-    return this.entityManager.transactional(async (em) => {
+    return (transactionManager ?? this.entityManager).transactional(async (em) => {
       const lockKey =
         `${requestedTransaction.providerId.length}:${requestedTransaction.providerId}` +
         requestedTransaction.idempotencyKey;
+      const lockStarted = performance.now();
       await em.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
         [lockKey],
       );
+      this.metrics?.recordLockWait(performance.now() - lockStarted);
 
       const existing = await this.transactions.findByIdempotencyKey(
         requestedTransaction.providerId,
@@ -237,28 +241,70 @@ export class ProcessPersistedWagerTransaction {
         };
       }
 
-      await this.outbox.enqueue(
-        new WagerTransactionPendingReference({
-          ...this.eventContext(transaction, props),
-          aggregateId: wallet.id,
-          data: {
-            transactionId: transaction.id,
-            providerId: transaction.providerId,
-            externalTransactionId: transaction.externalTransactionId,
-            walletId: wallet.id,
-            playerId: transaction.playerId,
-            kind: transaction.kind,
-            money: transaction.money.toJSON(),
-            referenceExternalTransactionId: transaction.referenceExternalTransactionId!,
-          },
-        }),
-        em,
-      );
+      await this.transactions.scheduleReferenceRetry(transaction.id, 24, em);
+      if (!retryingPendingReference) {
+        await this.outbox.enqueue(
+          new WagerTransactionPendingReference({
+            ...this.eventContext(transaction, props),
+            aggregateId: wallet.id,
+            data: {
+              transactionId: transaction.id,
+              providerId: transaction.providerId,
+              externalTransactionId: transaction.externalTransactionId,
+              walletId: wallet.id,
+              playerId: transaction.playerId,
+              kind: transaction.kind,
+              money: transaction.money.toJSON(),
+              referenceExternalTransactionId: transaction.referenceExternalTransactionId!,
+            },
+          }),
+          em,
+        );
+      }
       return {
         status: result.status,
         transactionId: transaction.id,
         idempotentReplay: retryingPendingReference,
       };
+    });
+  }
+
+  async rejectExpiredReference(
+    transactionId: string,
+    processedAt: Date,
+  ): Promise<boolean> {
+    return this.entityManager.transactional(async (em) => {
+      const persisted = await this.transactions.findByIdForUpdate(transactionId, em);
+      if (
+        !persisted ||
+        persisted.transaction.status !== WagerTransactionStatus.PendingReference
+      ) {
+        return false;
+      }
+      const transaction = persisted.transaction;
+      transaction.reject(FailureCode.ReferenceNotFound);
+      await this.transactions.update(transaction, undefined, em);
+      await this.outbox.enqueue(
+        new WagerTransactionRejected({
+          eventId: crypto.randomUUID(),
+          aggregateId: transaction.walletId,
+          correlationId: transaction.id,
+          causationId: transaction.id,
+          occurredAt: processedAt,
+          data: {
+            transactionId: transaction.id,
+            providerId: transaction.providerId,
+            externalTransactionId: transaction.externalTransactionId,
+            walletId: transaction.walletId,
+            playerId: transaction.playerId,
+            kind: transaction.kind,
+            money: transaction.money.toJSON(),
+            failureCode: FailureCode.ReferenceNotFound,
+          },
+        }),
+        em,
+      );
+      return true;
     });
   }
 

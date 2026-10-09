@@ -13,6 +13,7 @@
     "db:migrate": "bun src/database/migrate.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1148.0",
     "@mikro-orm/core": "^7.2.4",
     "@mikro-orm/migrations": "7.2.4",
     "@mikro-orm/postgresql": "^7.2.4",

@@ -10,6 +10,8 @@ import { Money } from "../domain/money";
 export interface PersistedWagerTransaction {
   transaction: WagerTransaction;
   resultBalance: Money | undefined;
+  referenceAttempts?: number;
+  referenceExpiresAt?: Date;
 }
 
 interface WagerTransactionRow {
@@ -180,6 +182,13 @@ export class WagerTransactionRepository {
     return this.findOne("id = ?", [id], entityManager);
   }
 
+  async findByIdForUpdate(
+    id: string,
+    entityManager: EntityManager,
+  ): Promise<PersistedWagerTransaction | undefined> {
+    return this.findOne("id = ?", [id], entityManager, true);
+  }
+
   async findByIdempotencyKey(
     providerId: string,
     idempotencyKey: string,
@@ -230,6 +239,80 @@ export class WagerTransactionRepository {
       [referenceTransactionId, kind],
     );
     return rows.length > 0;
+  }
+
+  async scheduleReferenceRetry(
+    transactionId: string,
+    ttlHours: number,
+    entityManager: EntityManager,
+  ): Promise<void> {
+    const [updated] = await entityManager.execute<{ id: string }[]>(
+      `UPDATE ${this.schema}.wager_transaction
+       SET reference_attempts = reference_attempts + 1,
+           reference_next_attempt_at = now() + make_interval(
+             secs => LEAST(300, power(2, LEAST(reference_attempts, 8)))::int
+           ),
+           reference_expires_at = COALESCE(
+             reference_expires_at,
+             now() + make_interval(hours => ?)
+           )
+       WHERE id = ? AND status = 'PENDING_REFERENCE'
+       RETURNING id`,
+      [ttlHours, transactionId],
+    );
+    if (!updated) {
+      throw new Error(`Pending-reference transaction ${transactionId} was not scheduled`);
+    }
+  }
+
+  async claimDuePendingReferences(
+    limit: number,
+    leaseSeconds = 60,
+  ): Promise<Array<{
+    persisted: PersistedWagerTransaction;
+    attempts: number;
+    expiresAt: Date;
+  }>> {
+    return this.entityManager.transactional(async (em) => {
+      const rows = await em.execute<Array<{
+        id: string;
+        reference_attempts: number;
+        reference_expires_at: Date | string;
+      }>>(
+        `WITH due AS (
+           SELECT id
+           FROM ${this.schema}.wager_transaction
+           WHERE status = 'PENDING_REFERENCE'
+             AND (reference_next_attempt_at IS NULL OR reference_next_attempt_at <= now())
+           ORDER BY COALESCE(reference_next_attempt_at, created_at), id
+           FOR UPDATE SKIP LOCKED
+           LIMIT ?
+         )
+         UPDATE ${this.schema}.wager_transaction AS wager
+         SET reference_next_attempt_at = now() + make_interval(secs => ?)
+         FROM due
+         WHERE wager.id = due.id
+         RETURNING wager.id, wager.reference_attempts,
+                   COALESCE(
+                     wager.reference_expires_at,
+                     now() + interval '24 hours'
+                   ) AS reference_expires_at`,
+        [limit, leaseSeconds],
+      );
+      const claimed = [];
+      for (const row of rows) {
+        const persisted = await this.findById(row.id, em);
+        if (!persisted) {
+          throw new Error(`Pending-reference transaction ${row.id} disappeared`);
+        }
+        claimed.push({
+          persisted,
+          attempts: row.reference_attempts,
+          expiresAt: requiredDate(row.reference_expires_at, "reference_expires_at"),
+        });
+      }
+      return claimed;
+    });
   }
 
   private async findOne(
